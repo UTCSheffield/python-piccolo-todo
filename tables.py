@@ -1,13 +1,22 @@
 from piccolo.columns import Boolean, ForeignKey, Varchar
+from piccolo.columns.readable import Readable
 from piccolo.table import Table
+from piccolo.apps.user.tables import BaseUser
 
 
 class Category(Table):
     name = Varchar(length=50, required=True, unique=True)
 
+    def __str__(self) -> str:
+        return self.name
+    
+    @classmethod
+    def get_readable(cls):
+        return Readable(template="%s", columns=[cls.name])
+
 
 class Todo(Table):
     task = Varchar(length=200, required=True)
-    user_id = Varchar(length=100, required=True)
-    category = ForeignKey(references=Category, null=False)
+    user = ForeignKey(references=BaseUser, null=False)
+    category = ForeignKey(references=Category, null=False, help_text="Select a category")
     done = Boolean(default=False)

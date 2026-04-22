@@ -100,7 +100,7 @@ def _todo_payload(todo_row: dict) -> dict:
     return {
         "id": todo_row["id"],
         "task": todo_row["task"],
-        "user_id": todo_row["user_id"],
+        "user": todo_row["user"],
         "category": todo_row["category"],
         "done": todo_row["done"],
     }
@@ -115,8 +115,8 @@ async def _require_authenticated_user(request: Request) -> BaseUser:
 
 async def _fetch_owned_todo_or_404(todo_id: int, user: BaseUser):
     todo_row = (
-        await Todo.select(Todo.id, Todo.task, Todo.user_id, Todo.category, Todo.done)
-        .where((Todo.id == todo_id) & (Todo.user_id == str(user.id)))
+        await Todo.select(Todo.id, Todo.task, Todo.user, Todo.category, Todo.done)
+        .where((Todo.id == todo_id) & (Todo.user == user.id))
         .first()
     )
     if not todo_row:
@@ -232,8 +232,8 @@ async def session_logout(request: Request):
 async def list_todos(request: Request):
     user = await _require_authenticated_user(request)
     rows = (
-        await Todo.select(Todo.id, Todo.task, Todo.user_id, Todo.category, Todo.done)
-        .where(Todo.user_id == str(user.id))
+        await Todo.select(Todo.id, Todo.task, Todo.user, Todo.category, Todo.done)
+        .where(Todo.user == user.id)
     )
     payload_rows = [_todo_payload(row) for row in rows]
     return {"rows": payload_rows, "total": len(payload_rows)}
@@ -256,14 +256,14 @@ async def create_todo(payload: CreateTodoRequest, request: Request):
 
     todo = Todo(
         task=payload.task.strip(),
-        user_id=str(user.id),
+        user=user.id,
         category=payload.category,
         done=payload.done,
     )
     await todo.save()
 
     todo_row = (
-        await Todo.select(Todo.id, Todo.task, Todo.user_id, Todo.category, Todo.done)
+        await Todo.select(Todo.id, Todo.task, Todo.user, Todo.category, Todo.done)
         .where(Todo.id == todo.id)
         .first()
     )
@@ -287,7 +287,7 @@ async def update_todo(todo_id: int, payload: UpdateTodoRequest, request: Request
         values[Todo.category] = payload.category
 
     if values:
-        await Todo.update(values).where((Todo.id == todo_id) & (Todo.user_id == str(user.id)))
+        await Todo.update(values).where((Todo.id == todo_id) & (Todo.user == user.id))
 
     todo_row = await _fetch_owned_todo_or_404(todo_id=todo_id, user=user)
     return _todo_payload(todo_row)
@@ -297,7 +297,7 @@ async def update_todo(todo_id: int, payload: UpdateTodoRequest, request: Request
 async def delete_todo(todo_id: int, request: Request):
     user = await _require_authenticated_user(request)
     await _fetch_owned_todo_or_404(todo_id=todo_id, user=user)
-    await Todo.delete().where((Todo.id == todo_id) & (Todo.user_id == str(user.id)))
+    await Todo.delete().where((Todo.id == todo_id) & (Todo.user == user.id))
     return {"success": True}
 
 
