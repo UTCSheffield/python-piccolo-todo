@@ -1,4 +1,7 @@
+import os
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from piccolo.apps.user.tables import BaseUser
 from piccolo_admin.endpoints import create_admin
@@ -8,7 +11,32 @@ from piccolo_api.session_auth.tables import SessionsBase
 
 from tables import Category, Todo
 
+
+def _get_cors_origins() -> list[str]:
+    raw = os.getenv("CORS_ORIGINS", "")
+    if raw.strip():
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+    return [
+        "http://localhost:19006",
+        "http://127.0.0.1:19006",
+        "http://localhost:8081",
+        "http://127.0.0.1:8081",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+
+
 app = FastAPI(title="Piccolo Todo API")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_get_cors_origins(),
+    allow_origin_regex=r"https://.*\.app\.github\.dev(:\d+)?",
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.mount(
     "/admin",
     create_admin(
@@ -22,6 +50,11 @@ app.mount(
 @app.get("/")
 async def root():
     return {"message": "Piccolo Todo API", "docs": "/docs", "admin": "/admin/"}
+
+
+@app.get("/api/health")
+async def health():
+    return {"status": "ok"}
 
 
 @app.get("/admin", include_in_schema=False)
