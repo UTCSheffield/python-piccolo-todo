@@ -30,18 +30,33 @@ Todo fields:
 
 ## Run Locally
 
+### Backend
+
 1. Install dependencies:
 
    python3 -m pip install -r requirements.txt
 
 2. Start the app:
 
-   uvicorn app:app --reload
+   python3 -m uvicorn app:app --reload
 
 3. Open in browser:
 
    - Admin UI: http://127.0.0.1:8000/admin
    - API docs: http://127.0.0.1:8000/docs
+
+### Frontend (Expo)
+
+1. Install dependencies:
+
+   cd frontend
+   npm install
+
+2. Start Expo:
+
+   npx expo start
+
+3. Press `w` to open in the browser, or scan the QR code with the Expo Go app.
 
 ## API Endpoints
 
