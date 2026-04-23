@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Request
@@ -11,9 +12,130 @@ from piccolo_admin.endpoints import create_admin
 from piccolo_api.crud.endpoints import PiccoloCRUD
 from piccolo_api.fastapi.endpoints import FastAPIWrapper
 from piccolo_api.session_auth.tables import SessionsBase
-from starlette.status import HTTP_201_CREATED, HTTP_401_UNAUTHORIZED, HTTP_404_NOT_FOUND
+from starlette.status import HTTP_201_CREATED, HTTP_401_UNAUTHORIZED
 
+from app_startup import initialize_schema_and_seed
+from auth_helpers import (
+    LoginRequest,
+    RegisterRequest,
+    clear_session_cookie,
+    get_authenticated_user,
+    require_authenticated_user,
+    set_session_cookie,
+    user_payload,
+)
+from owned_piccolo_crud import OwnedPiccoloCRUD
 from tables import Category, Todo
+
+
+TODO_SELECT_COLUMNS = (Todo.id, Todo.task, Todo.user, Todo.category, Todo.done)
+
+
+class CreateTodoRequest(BaseModel):
+    task: str = Field(min_length=1, max_length=200)
+    category: int
+    done: bool = False
+
+
+class UpdateTodoRequest(BaseModel):
+    task: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    category: Optional[int] = None
+    done: Optional[bool] = None
+
+
+def todo_payload(todo_row: dict) -> dict:
+    return {
+        "id": todo_row["id"],
+        "task": todo_row["task"],
+        "user": todo_row["user"],
+        "category": todo_row["category"],
+        "done": todo_row["done"],
+    }
+
+
+def _normalise_task(task: str) -> str:
+    normalised = task.strip()
+    if not normalised:
+        raise HTTPException(status_code=400, detail="Task cannot be empty")
+    return normalised
+
+
+async def _ensure_category_exists(category_id: int) -> None:
+    category_exists = await Category.exists().where(Category.id == category_id)
+    if not category_exists:
+        raise HTTPException(status_code=400, detail="Invalid category")
+
+
+async def _fetch_owned_todo_or_404(todo_id: int, user: BaseUser):
+    todo_row = (
+        await Todo.select(*TODO_SELECT_COLUMNS)
+        .where((Todo.id == todo_id) & (Todo.user == user.id))
+        .first()
+    )
+    if not todo_row:
+        raise HTTPException(status_code=404, detail="Todo not found")
+    return todo_row
+
+
+async def _list_owned_todos(user: BaseUser) -> dict:
+    rows = (
+        await Todo.select(*TODO_SELECT_COLUMNS)
+        .where(Todo.user == user.id)
+    )
+    payload_rows = [todo_payload(row) for row in rows]
+    return {"rows": payload_rows, "total": len(payload_rows)}
+
+
+async def _create_owned_todo(user: BaseUser, payload: CreateTodoRequest) -> dict:
+    await _ensure_category_exists(payload.category)
+
+    todo = Todo(
+        task=_normalise_task(payload.task),
+        user=user.id,
+        category=payload.category,
+        done=payload.done,
+    )
+    await todo.save()
+
+    todo_row = (
+        await Todo.select(*TODO_SELECT_COLUMNS)
+        .where(Todo.id == todo.id)
+        .first()
+    )
+    return todo_payload(todo_row)
+
+
+async def _update_owned_todo(
+    todo_id: int, user: BaseUser, payload: UpdateTodoRequest
+) -> dict:
+    await _fetch_owned_todo_or_404(todo_id=todo_id, user=user)
+
+    values = {}
+    if payload.task is not None:
+        values[Todo.task] = _normalise_task(payload.task)
+    if payload.done is not None:
+        values[Todo.done] = payload.done
+    if payload.category is not None:
+        await _ensure_category_exists(payload.category)
+        values[Todo.category] = payload.category
+
+    if values:
+        await Todo.update(values).where((Todo.id == todo_id) & (Todo.user == user.id))
+
+    todo_row = await _fetch_owned_todo_or_404(todo_id=todo_id, user=user)
+    return todo_payload(todo_row)
+
+
+async def _delete_owned_todo(todo_id: int, user: BaseUser) -> dict:
+    await _fetch_owned_todo_or_404(todo_id=todo_id, user=user)
+    await Todo.delete().where((Todo.id == todo_id) & (Todo.user == user.id))
+    return {"success": True}
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    await initialize_schema_and_seed()
+    yield
 
 
 def _get_cors_origins() -> list[str]:
@@ -31,7 +153,7 @@ def _get_cors_origins() -> list[str]:
     ]
 
 
-app = FastAPI(title="Piccolo Todo API")
+app = FastAPI(title="Piccolo Todo API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_get_cors_origins(),
@@ -69,90 +191,22 @@ async def health():
     return {"status": "ok"}
 
 
-async def _get_authenticated_user(request: Request):
-    session_token = request.cookies.get("id")
-    if not session_token:
-        return None
-
-    session = (
-        await SessionsBase.objects()
-        .where(SessionsBase.token == session_token)
-        .first()
-    )
-    if not session:
-        return None
-
-    return await BaseUser.objects().where(BaseUser.id == session.user_id).first()
-
-
-def _user_payload(user: BaseUser) -> dict:
-    return {
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-        "is_admin": user.admin,
-        "is_superuser": user.superuser,
-        "is_active": user.active,
-    }
-
-
-def _todo_payload(todo_row: dict) -> dict:
-    return {
-        "id": todo_row["id"],
-        "task": todo_row["task"],
-        "user": todo_row["user"],
-        "category": todo_row["category"],
-        "done": todo_row["done"],
-    }
-
-
-async def _require_authenticated_user(request: Request) -> BaseUser:
-    user = await _get_authenticated_user(request)
-    if not user:
-        raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-    return user
-
-
-async def _fetch_owned_todo_or_404(todo_id: int, user: BaseUser):
-    todo_row = (
-        await Todo.select(Todo.id, Todo.task, Todo.user, Todo.category, Todo.done)
-        .where((Todo.id == todo_id) & (Todo.user == user.id))
-        .first()
-    )
-    if not todo_row:
-        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail="Todo not found")
-    return todo_row
-
-
-class CreateTodoRequest(BaseModel):
-    task: str = Field(min_length=1, max_length=200)
-    category: int
-    done: bool = False
-
-
-class UpdateTodoRequest(BaseModel):
-    task: Optional[str] = Field(default=None, min_length=1, max_length=200)
-    category: Optional[int] = None
-    done: Optional[bool] = None
-
-
 @app.get("/api/session")
 async def session_status(request: Request):
-    user = await _get_authenticated_user(request)
+    user = await get_authenticated_user(request)
     if not user:
         return {"authenticated": False}
 
     return {
         "authenticated": True,
-        "user": _user_payload(user),
+        "user": user_payload(user),
     }
 
 
 @app.post("/api/session/login")
-async def session_login(request: Request):
-    payload = await request.json()
-    username = payload.get("username", "")
-    password = payload.get("password", "")
+async def session_login(payload: LoginRequest):
+    username = payload.username
+    password = payload.password
 
     user_id = await BaseUser.login(username=username, password=password)
     if not user_id:
@@ -167,27 +221,18 @@ async def session_login(request: Request):
     response = JSONResponse(
         {
             "success": True,
-            "user": _user_payload(user),
+            "user": user_payload(user),
         }
     )
-    response.set_cookie(
-        key="id",
-        value=session.token,
-        httponly=True,
-        samesite="lax",
-    )
+    set_session_cookie(response=response, token=session.token)
     return response
 
 
 @app.post("/api/session/register", status_code=HTTP_201_CREATED)
-async def session_register(request: Request):
-    payload = await request.json()
-    username = payload.get("username", "")
-    password = payload.get("password", "")
-    email = payload.get("email")
-
-    if not username or not password:
-        raise HTTPException(status_code=400, detail="Username and password are required")
+async def session_register(payload: RegisterRequest):
+    username = payload.username
+    password = payload.password
+    email = payload.email or f"{username}@local.invalid"
 
     existing_user = await BaseUser.objects().where(BaseUser.username == username).first()
     if existing_user:
@@ -204,16 +249,11 @@ async def session_register(request: Request):
     response = JSONResponse(
         {
             "success": True,
-            "user": _user_payload(user),
+            "user": user_payload(user),
         },
         status_code=HTTP_201_CREATED,
     )
-    response.set_cookie(
-        key="id",
-        value=session.token,
-        httponly=True,
-        samesite="lax",
-    )
+    set_session_cookie(response=response, token=session.token)
     return response
 
 
@@ -224,81 +264,39 @@ async def session_logout(request: Request):
         await SessionsBase.remove_session(token=session_token)
 
     response = JSONResponse({"success": True, "authenticated": False})
-    response.delete_cookie(key="id", samesite="lax")
+    clear_session_cookie(response)
     return response
 
 
 @app.get("/api/todos/")
 async def list_todos(request: Request):
-    user = await _require_authenticated_user(request)
-    rows = (
-        await Todo.select(Todo.id, Todo.task, Todo.user, Todo.category, Todo.done)
-        .where(Todo.user == user.id)
-    )
-    payload_rows = [_todo_payload(row) for row in rows]
-    return {"rows": payload_rows, "total": len(payload_rows)}
+    user = await require_authenticated_user(request)
+    return await _list_owned_todos(user=user)
 
 
 @app.get("/api/todos/{todo_id}")
 async def get_todo(todo_id: int, request: Request):
-    user = await _require_authenticated_user(request)
+    user = await require_authenticated_user(request)
     todo_row = await _fetch_owned_todo_or_404(todo_id=todo_id, user=user)
-    return _todo_payload(todo_row)
+    return todo_payload(todo_row)
 
 
 @app.post("/api/todos/", status_code=HTTP_201_CREATED)
 async def create_todo(payload: CreateTodoRequest, request: Request):
-    user = await _require_authenticated_user(request)
-
-    category_exists = await Category.exists().where(Category.id == payload.category)
-    if not category_exists:
-        raise HTTPException(status_code=400, detail="Invalid category")
-
-    todo = Todo(
-        task=payload.task.strip(),
-        user=user.id,
-        category=payload.category,
-        done=payload.done,
-    )
-    await todo.save()
-
-    todo_row = (
-        await Todo.select(Todo.id, Todo.task, Todo.user, Todo.category, Todo.done)
-        .where(Todo.id == todo.id)
-        .first()
-    )
-    return _todo_payload(todo_row)
+    user = await require_authenticated_user(request)
+    return await _create_owned_todo(user=user, payload=payload)
 
 
 @app.put("/api/todos/{todo_id}")
 async def update_todo(todo_id: int, payload: UpdateTodoRequest, request: Request):
-    user = await _require_authenticated_user(request)
-    await _fetch_owned_todo_or_404(todo_id=todo_id, user=user)
-
-    values = {}
-    if payload.task is not None:
-        values[Todo.task] = payload.task.strip()
-    if payload.done is not None:
-        values[Todo.done] = payload.done
-    if payload.category is not None:
-        category_exists = await Category.exists().where(Category.id == payload.category)
-        if not category_exists:
-            raise HTTPException(status_code=400, detail="Invalid category")
-        values[Todo.category] = payload.category
-
-    if values:
-        await Todo.update(values).where((Todo.id == todo_id) & (Todo.user == user.id))
-
-    todo_row = await _fetch_owned_todo_or_404(todo_id=todo_id, user=user)
-    return _todo_payload(todo_row)
+    user = await require_authenticated_user(request)
+    return await _update_owned_todo(todo_id=todo_id, user=user, payload=payload)
 
 
 @app.delete("/api/todos/{todo_id}")
 async def delete_todo(todo_id: int, request: Request):
-    user = await _require_authenticated_user(request)
-    await _fetch_owned_todo_or_404(todo_id=todo_id, user=user)
-    await Todo.delete().where((Todo.id == todo_id) & (Todo.user == user.id))
-    return {"success": True}
+    user = await require_authenticated_user(request)
+    return await _delete_owned_todo(todo_id=todo_id, user=user)
 
 
 @app.get("/admin", include_in_schema=False)
@@ -311,16 +309,12 @@ FastAPIWrapper(
     piccolo_crud=PiccoloCRUD(table=Category, read_only=False),
 )
 
-
-@app.on_event("startup")
-async def startup() -> None:
-    await BaseUser.create_table(if_not_exists=True)
-    await SessionsBase.create_table(if_not_exists=True)
-    await Category.create_table(if_not_exists=True)
-    await Todo.create_table(if_not_exists=True)
-
-    if not await Category.exists().where(Category.name == "Urgent"):
-        await Category(name="Urgent").save()
-
-    if not await Category.exists().where(Category.name == "Non-urgent"):
-        await Category(name="Non-urgent").save()
+FastAPIWrapper(
+    root_url="/api/todos-crud/",
+    fastapi_app=app,
+    piccolo_crud=OwnedPiccoloCRUD(
+        table=Todo,
+        owner_column=Todo.user,
+        read_only=False,
+    ),
+)

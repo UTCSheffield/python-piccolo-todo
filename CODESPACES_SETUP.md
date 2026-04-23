@@ -87,6 +87,11 @@ If you're running in **GitHub Codespaces**, you must set the forwarded port to *
 
 Without this, Auth0 cannot reach your callback URL and login will fail.
 
+To set both ports to public automatically for the current codespace, run:
+
+```bash
+./scripts/set_codespaces_ports.sh
+```
 ## Using the App
 
 1. Visit [http://localhost:5000](http://localhost:5000)

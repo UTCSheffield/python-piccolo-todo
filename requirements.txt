@@ -3,3 +3,4 @@ uvicorn[standard]==0.35.0
 piccolo[sqlite]==1.24.2
 piccolo-admin==1.12.0
 piccolo-api
+pytest==8.3.3

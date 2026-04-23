@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -18,14 +18,23 @@ export default function CreateTodoScreen() {
   const { data: categories = [] } = useCategories();
   const createMutation = useCreateTodo();
   const [task, setTask] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>(
-    categories.length > 0 ? categories[0].id.toString() : ''
-  );
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!selectedCategory && categories.length > 0) {
+      setSelectedCategory(categories[0].id.toString());
+    }
+  }, [categories, selectedCategory]);
 
   const handleCreate = async () => {
     if (!task.trim()) {
       setError('Please enter a task');
+      return;
+    }
+
+    if (!selectedCategory) {
+      setError('Please select a category');
       return;
     }
 
