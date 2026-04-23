@@ -69,7 +69,7 @@ def test_todo_endpoints_enforce_owner_isolation(client: TestClient):
         json={"task": "Private owner task", "category": category_id, "done": False},
     )
     assert create_response.status_code == 201
-    todo_id = create_response.json()["id"]
+    todo_id = create_response.json()[0]["id"]
 
     _logout(client=client)
 
@@ -81,20 +81,20 @@ def test_todo_endpoints_enforce_owner_isolation(client: TestClient):
     rows = list_response.json()["rows"]
     assert not any(row["id"] == todo_id for row in rows)
 
-    get_response = client.get(f"/api/todos/{todo_id}")
+    get_response = client.get(f"/api/todos/{todo_id}/")
     assert get_response.status_code == 404
 
     update_response = client.put(
-        f"/api/todos/{todo_id}",
+        f"/api/todos/{todo_id}/",
         json={"task": "Attempted unauthorized update"},
     )
     assert update_response.status_code == 404
 
-    delete_response = client.delete(f"/api/todos/{todo_id}")
+    delete_response = client.delete(f"/api/todos/{todo_id}/")
     assert delete_response.status_code == 404
 
 
-def test_owned_piccolo_crud_scopes_by_user(client: TestClient):
+def test_todos_owned_piccolo_crud_scopes_by_user(client: TestClient):
     category_id = _get_category_id(client=client)
 
     owner_username = f"crud-owner-{uuid4().hex[:8]}"
@@ -105,7 +105,7 @@ def test_owned_piccolo_crud_scopes_by_user(client: TestClient):
     owner_id = owner_register.json()["user"]["id"]
 
     create_response = client.post(
-        "/api/todos-crud/",
+        "/api/todos/",
         json={
             "task": "Piccolo owned task",
             "category": category_id,
@@ -116,7 +116,7 @@ def test_owned_piccolo_crud_scopes_by_user(client: TestClient):
     assert create_response.status_code == 201
     todo_id = create_response.json()[0]["id"]
 
-    owner_get = client.get(f"/api/todos-crud/{todo_id}/")
+    owner_get = client.get(f"/api/todos/{todo_id}/")
     assert owner_get.status_code == 200
     assert owner_get.json()["user"] == owner_id
 
@@ -125,9 +125,9 @@ def test_owned_piccolo_crud_scopes_by_user(client: TestClient):
     other_register = _register(client=client, username=other_username)
     assert other_register.status_code == 201
 
-    other_list = client.get("/api/todos-crud/")
+    other_list = client.get("/api/todos/")
     assert other_list.status_code == 200
     assert not any(row["id"] == todo_id for row in other_list.json()["rows"])
 
-    other_get = client.get(f"/api/todos-crud/{todo_id}/")
+    other_get = client.get(f"/api/todos/{todo_id}/")
     assert other_get.status_code == 404
