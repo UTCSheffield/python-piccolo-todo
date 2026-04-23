@@ -6,6 +6,8 @@ This repository contains a minimal Piccolo ORM + FastAPI project with:
 2. Auto-generated JSON API endpoints using piccolo_api.
 3. Built-in Piccolo admin mounted with `piccolo_admin` (no custom admin templates needed).
 
+It also includes an Expo frontend in `frontend/`.
+
 ## Data Model
 
 The project uses these entities:
@@ -16,7 +18,7 @@ The project uses these entities:
 Todo fields:
 
 1. task
-2. user_id
+2. user (foreign key to BaseUser)
 3. category (foreign key to Category)
 4. done
 
@@ -27,36 +29,75 @@ Todo fields:
 3. SQLite (default local database)
 4. piccolo_admin
 5. piccolo_api
+6. Expo (frontend)
+
+## Prerequisites
+
+1. Python 3.10+
+2. Node.js 18+ and npm
+
+## Install Dependencies
+
+From the project root:
+
+1. Backend dependencies:
+
+   ```bash
+   python -m pip install -r requirements.txt
+   ```
+
+2. Frontend dependencies:
+
+   ```bash
+   cd frontend
+   npm install
+   cd ..
+   ```
 
 ## Run Locally
 
 ### Backend
 
-1. Install dependencies:
+1. Start the API server from the project root:
 
-   python3 -m pip install -r requirements.txt
+   ```bash
+   python -m uvicorn app:app --reload
+   ```
 
-2. Start the app:
-
-   python3 -m uvicorn app:app --reload
-
-3. Open in browser:
+2. Open in browser:
 
    - Admin UI: http://127.0.0.1:8000/admin
    - API docs: http://127.0.0.1:8000/docs
 
 ### Frontend (Expo)
 
-1. Install dependencies:
+1. Start Expo:
 
+   ```bash
    cd frontend
-   npm install
-
-2. Start Expo:
-
    npx expo start
+   ```
 
-3. Press `w` to open in the browser, or scan the QR code with the Expo Go app.
+2. Press `w` to open in the browser, or scan the QR code with Expo Go.
+
+## Run Both Together
+
+Use two terminals from the project root:
+
+1. Terminal 1 (backend):
+
+   ```bash
+   python -m uvicorn app:app --reload
+   ```
+
+2. Terminal 2 (frontend):
+
+   ```bash
+   cd frontend
+   npx expo start
+   ```
+
+If running in Codespaces, ensure ports 8000 (backend) and 8081 (Expo) are forwarded.
 
 ## API Endpoints
 

@@ -1,22 +1,12 @@
 services:
   - type: web
-    name: flask-todo-app
+    name: piccolo-todo-api
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: python -m gunicorn app:app
+    startCommand: python -m gunicorn -k uvicorn.workers.UvicornWorker app:app --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.1
-      - key: OAUTHLIB_INSECURE_TRANSPORT
-        value: "0"
-      - key: APP_SECRET_KEY
-        generateValue: true
-      - key: AUTH0_DOMAIN
-        sync: false
-      - key: AUTH0_CLIENT_ID
-        sync: false
-      - key: AUTH0_CLIENT_SECRET
-        sync: false
-      - key: AUTH0_CALLBACK_URL
+      - key: CORS_ORIGINS
         sync: false

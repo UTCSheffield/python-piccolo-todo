@@ -1,132 +1,109 @@
-# Deployment on Render
+# Deployment on Render (Piccolo + FastAPI)
+
+This guide covers deploying the backend API and admin for this project on Render.
+
+## What Gets Deployed
+
+- FastAPI app from `app.py`
+- Piccolo Admin at `/admin`
+- API docs at `/docs`
+
+The Expo frontend is deployed separately (or run locally).
 
 ## Prerequisites
 
-1. **GitHub Repository**: Your code must be pushed to a GitHub repository
-2. **Render Account**: Sign up at [render.com](https://render.com) (free tier available)
-3. **Auth0 Application**: Configured with your production callback URL
+1. Code pushed to GitHub.
+2. Render account: https://render.com
+3. `render.yaml` in the repository root.
 
-## Auth0 Setup (Production)
+## Step 1: Verify App Runs Locally
 
-Before deploying to Render, set up Auth0 for production:
+From the project root:
 
-1. **Create an Auth0 Account**
-   - Go to [auth0.com](https://auth0.com) and sign up
+```bash
+python -m pip install -r requirements.txt
+python -m uvicorn app:app --reload
+```
 
-2. **Create an Application**
-   - Dashboard → Applications → Create Application
-   - Choose "Regular Web Applications"
-   - Name: Flask Todo App
+Check:
 
-3. **Configure Application Settings**
-   - "Allowed Callback URLs": `https://<your-app-name>.onrender.com/callback`
-   - "Allowed Logout URLs": `https://<your-app-name>.onrender.com/`
-   - "Allowed Web Origins": `https://<your-app-name>.onrender.com`
-   - Example: `https://flask-todo-app.onrender.com/callback`
+- `http://127.0.0.1:8000/docs`
+- `http://127.0.0.1:8000/admin`
 
-4. **Save Credentials**
-   - Copy your Auth0 Domain, Client ID, and Client Secret
-   - You'll need these for Render environment variables in Step 3
+## Step 2: Create a Render Blueprint
 
-## Step 1: Prepare Your Repository
+1. Open https://dashboard.render.com
+2. Click `New +` -> `Blueprint`
+3. Connect your GitHub repo
+4. Select this project and apply the detected `render.yaml`
 
-Ensure your repository contains:
-- `render.yaml` (blueprint configuration file)
-- `requirements.txt` (Python dependencies)
-- All application code pushed to GitHub
-- Use `python -m gunicorn app:app --bind 0.0.0.0:5000` to confirm that everything works ok under gunicorn before trying Render
+Render will create and deploy the web service automatically.
 
-## Step 2: Create a Blueprint on Render
+## Step 3: Environment Variables
 
-1. **Log in to Render Dashboard**
-   - Go to [dashboard.render.com](https://dashboard.render.com)
+This project does not require Auth0 variables.
 
-2. **Create New Blueprint**
-   - Click the "New +" button in the top right
-   - Select "Blueprint" from the dropdown menu
-   - [Direct Link to Create Blueprint](https://dashboard.render.com/select-repo?type=blueprint)
+Optional variables you may set:
 
-3. **Connect Your GitHub Repository**
-   - Click "Connect account" if this is your first time
-   - Authorize Render to access your GitHub repositories
-   - Search for select your version of `python-flask-todo`
-   - Click "Connect"
+- `CORS_ORIGINS`: comma-separated list of allowed origins.
+  Example:
+  `https://your-frontend.example.com,https://your-codespace-8081.app.github.dev`
 
-4. **Review Blueprint Configuration**
-   - Render will detect your `render.yaml` file
-   - Review the services that will be created (web service, database, etc.)
-   - Give your blueprint instance a name (e.g., "flask-todo-app")
-   - Click "Apply"
+Notes:
 
-## Step 3: Configure Environment Variables
-   
-   Add these in Render Dashboard → Environment:
-   
-   ```
-   AUTH0_CLIENT_ID=your_client_id
-   AUTH0_CLIENT_SECRET=your_client_secret
-   AUTH0_DOMAIN=your_auth0_domain
-   APP_SECRET_KEY=your_secret_key
-   AUTH0_CALLBACK_URL=https://your-app-name.onrender.com/callback
-   ```
-   
-   **Important:** Replace `your-app-name.onrender.com` with your actual Render app URL (found in your Render dashboard).
-   
-   **Important:** Do NOT set `RENDER_EXTERNAL_HOSTNAME` manually. Render sets this automatically, but it's only available at runtime, not during build.
-   
-   **For Auth0 Configuration:** Use your actual Render app URL (e.g., `https://python-flask-todo.onrender.com`) in Auth0 settings, not the variable name.
+- Do not manually set `RENDER_EXTERNAL_HOSTNAME`.
+- Keep secrets in Render environment settings, not in git.
 
-3. **Automatic Deployment**
-   - Render will automatically build and deploy your application
-   - Wait for the build to complete (check the "Logs" tab)
-   - Your app will be available at `https://<your-app-name>.onrender.com`
-   - **Note**: The SQLite database file will persist on Render's filesystem
+## Step 4: Start Command
 
-## Step 4: Update Auth0 Settings
+Use a production server command in `render.yaml`, for example:
 
-1. **Add Production Callback URL**
-   - Go to [Auth0 Dashboard](https://manage.auth0.com)
-   - Navigate to your application settings
-   - Add to "Allowed Callback URLs": `https://<your-app-name>.onrender.com/callback`
-   - Add to "Allowed Logout URLs": `https://<your-app-name>.onrender.com/`
-   - Add to "Allowed Web Origins": `https://<your-app-name>.onrender.com`
-   - Click "Save Changes"
+```yaml
+startCommand: python -m gunicorn -k uvicorn.workers.UvicornWorker app:app
+```
 
-## Step 5: Test Your Deployment
+If your current `render.yaml` already deploys successfully, you can keep it as-is.
 
-1. Visit your Render URL: `https://<your-app-name>.onrender.com`
-2. Click "Login" - should redirect to Auth0
-3. Complete authentication
-4. Verify you can create and manage todos
+## Step 5: Validate Deployment
+
+After deploy completes:
+
+1. Open `https://<your-service>.onrender.com/docs`
+2. Open `https://<your-service>.onrender.com/admin`
+3. Call `GET /api/health`
+4. Test login/register and todo CRUD from the frontend
+
+## Database Notes
+
+### SQLite (default)
+
+- Works for quick demos.
+- Not recommended for multi-instance or long-term production growth.
+
+### PostgreSQL (recommended)
+
+Use the migration guide in [POSTGRESQL_SETUP.md](POSTGRESQL_SETUP.md).
 
 ## Continuous Deployment
 
-Once set up, Render automatically deploys when you push to your main branch:
+Render redeploys automatically when you push to your tracked branch.
 
-1. Make changes to your code locally
-2. Commit and push to GitHub:
-   ```bash
-   git add .
-   git commit -m "Your commit message"
-   git push origin main
-   ```
-3. Render detects the push and automatically rebuilds/redeploys
-4. Monitor deployment progress in the Render dashboard
+```bash
+git add .
+git commit -m "Update deployment"
+git push origin main
+```
 
 ## Troubleshooting
 
-- **Build Fails**: Check the "Logs" tab in Render dashboard for errors
-- **Auth0 Redirect Error**: Verify callback URLs match exactly (including https://)
-- **Environment Variables**: Ensure all required variables are set in Render
-- **Database Issues**: Render free tier databases sleep after inactivity; first request may be slow
-
-## Upgrading to PostgreSQL
-
-Once your app grows and you need a more robust database, see [POSTGRESQL_SETUP.md](POSTGRESQL_SETUP.md) for a complete migration guide.
+- Build fails: check Render deploy logs.
+- Import errors: confirm `requirements.txt` contains all needed packages.
+- 502/boot failure: confirm start command imports `app:app` successfully.
+- CORS failures: set `CORS_ORIGINS` to include your frontend host.
+- Slow first request on free tier: service may be waking from sleep.
 
 ## Useful Links
 
-- [Render Blueprint Documentation](https://render.com/docs/infrastructure-as-code)
-- [Render Python Deployment Guide](https://render.com/docs/deploy-flask)
-- [Render Environment Variables](https://render.com/docs/environment-variables)
-- [Auth0 Production Checklist](https://auth0.com/docs/deploy-monitor/deploy/production-checklist)
+- Render Blueprints: https://render.com/docs/infrastructure-as-code
+- Render Python services: https://render.com/docs/web-services
+- Render environment variables: https://render.com/docs/environment-variables

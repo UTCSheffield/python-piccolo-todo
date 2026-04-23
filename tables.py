@@ -7,9 +7,6 @@ from piccolo.apps.user.tables import BaseUser
 class Category(Table):
     name = Varchar(length=50, required=True, unique=True)
 
-    def __str__(self) -> str:
-        return self.name
-    
     @classmethod
     def get_readable(cls):
         return Readable(template="%s", columns=[cls.name])
