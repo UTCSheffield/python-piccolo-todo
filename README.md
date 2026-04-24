@@ -75,7 +75,7 @@ From the project root:
 
    ```bash
    cd frontend
-   npx expo start
+   npx expo start --web
    ```
 
 2. Press `w` to open in the browser, or scan the QR code with Expo Go.
