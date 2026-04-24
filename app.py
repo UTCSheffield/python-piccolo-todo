@@ -1,5 +1,6 @@
 import os
 from contextlib import asynccontextmanager
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -58,11 +59,30 @@ app.add_middleware(
 )
 
 def _get_allowed_hosts() -> list[str]:
-    hosts = ["localhost"]
+    hosts: set[str] = {"localhost", "127.0.0.1"}
+
     codespace_name = os.getenv("CODESPACE_NAME")
     if codespace_name:
-        hosts.append(f"{codespace_name}-8000.app.github.dev")
-    return hosts
+        hosts.add(f"{codespace_name}-8000.app.github.dev")
+
+    # Render-provided host variables.
+    render_external_hostname = os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip()
+    if render_external_hostname:
+        hosts.add(render_external_hostname)
+
+    render_external_url = os.getenv("RENDER_EXTERNAL_URL", "").strip()
+    if render_external_url:
+        parsed = urlparse(render_external_url)
+        if parsed.hostname:
+            hosts.add(parsed.hostname)
+
+    # Keep admin host checks in sync with configured CORS origins.
+    for origin in _get_cors_origins():
+        parsed = urlparse(origin)
+        if parsed.hostname:
+            hosts.add(parsed.hostname)
+
+    return sorted(hosts)
 
 
 app.mount(
