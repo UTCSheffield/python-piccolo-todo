@@ -49,6 +49,24 @@ Optional variables you may set:
   Example:
   `https://your-frontend.example.com,https://your-codespace-8081.app.github.dev`
 
+`CORS_ORIGINS` can include multiple hosts in a single value.
+
+Formatting rules:
+
+- Include the scheme for each origin (`http://` or `https://`).
+- Separate origins with commas.
+- Do not include URL paths (use origin only).
+
+Examples:
+
+```text
+CORS_ORIGINS=https://your-frontend.onrender.com,https://preview.example.com,http://localhost:8081
+```
+
+```text
+CORS_ORIGINS=https://my-app.vercel.app
+```
+
 Notes:
 
 - Do not manually set `RENDER_EXTERNAL_HOSTNAME`.
