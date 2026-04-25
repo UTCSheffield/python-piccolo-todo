@@ -1,0 +1,29 @@
+<table id="todo-table">
+  <thead><tr>
+    <th>Task</th>
+    <th>Category</th>
+    <th>Done</th>
+    <th></th>
+  </tr></thead>
+  <tbody>
+  {% for item in todos %}
+  <tr>
+    <td>{{ item.task }}</td>
+    <td>{{ item['category.name'] or '—' }}</td>
+    <td>
+      <button hx-post="/htmx/todos/{{ item.id }}/toggle_done"
+              hx-target="#todo-table" hx-swap="outerHTML">
+        {{ '✅' if item.done else '⬜' }}
+      </button>
+    </td>
+    <td>
+      <button hx-delete="/htmx/todos/{{ item.id }}"
+              hx-target="#todo-table" hx-swap="outerHTML"
+              hx-confirm="Delete this Todo?">🗑</button>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="10" style="text-align:center;color:#888">No todos yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>

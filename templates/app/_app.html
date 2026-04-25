@@ -1,0 +1,26 @@
+<section id="app">
+  <p>
+    Logged in as <strong>{{ user.username }}</strong>
+    <form class="inline" action="/app/logout" method="post">
+      <button type="submit" style="margin-left:1rem">Log out</button>
+    </form>
+  </p>
+
+  <!-- ---- Todo ---- -->
+  <h2>Todos</h2>
+
+  <form action="/app/todos" method="post"
+        style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem">
+    <input name="task" type="text" placeholder="Task" required />
+    <select name="category" required>
+      {% for item in categories %}
+        <option value="{{ item.id }}">{{ item.name }}</option>
+      {% endfor %}
+    </select>
+    <label><input name="done" type="checkbox" /> Done</label>
+    <button type="submit">Add Todo</button>
+  </form>
+
+  {% include "app/_todo_table.html" %}
+
+</section>

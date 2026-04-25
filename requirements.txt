@@ -5,3 +5,5 @@ piccolo[sqlite]==1.24.2
 piccolo-admin==1.12.0
 piccolo-api
 pytest==8.3.3
+jinja2>=3.1
+python-multipart>=0.0.9

@@ -1,0 +1,15 @@
+<section id="login">
+  <h2>Log in</h2>
+  <form hx-post="/htmx/login" hx-target="#login" hx-swap="outerHTML">
+    <div>
+      <label>Username<br /><input name="username" type="text" required autofocus /></label>
+    </div>
+    <div style="margin-top:0.5rem">
+      <label>Password<br /><input name="password" type="password" required /></label>
+    </div>
+    <div style="margin-top:0.75rem">
+      <button type="submit">Log in</button>
+    </div>
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  </form>
+</section>

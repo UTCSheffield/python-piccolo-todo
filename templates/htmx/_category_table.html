@@ -1,0 +1,20 @@
+<table id="category-table">
+  <thead><tr>
+    <th>Name</th>
+    <th></th>
+  </tr></thead>
+  <tbody>
+  {% for item in categorys %}
+  <tr>
+    <td>{{ item.name }}</td>
+    <td>
+      <button hx-delete="/htmx/categories/{{ item.id }}"
+              hx-target="#category-table" hx-swap="outerHTML"
+              hx-confirm="Delete this Category?">🗑 Delete</button>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="10" style="text-align:center;color:#888">No categories yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>

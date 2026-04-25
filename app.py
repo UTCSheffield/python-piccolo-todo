@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from piccolo.apps.user.tables import BaseUser
 from piccolo_admin.endpoints import create_admin
 from piccolo_api.crud.endpoints import PiccoloCRUD
@@ -25,6 +26,11 @@ from auth_helpers import (
 )
 from owned_piccolo_crud import OwnedPiccoloCRUD
 from tables import Category, Todo
+
+# HTMX server-rendered frontend (see htmx_routes.py + templates/htmx/)
+from htmx_routes import router as htmx_router
+# Plain Jinja2 server-rendered frontend (see app_routes.py + templates/app/)
+from app_routes import router as app_router
 
 
 @asynccontextmanager
@@ -93,6 +99,12 @@ app.mount(
     ),
     name="admin",
 )
+
+
+app.include_router(htmx_router)
+app.include_router(app_router)
+# Serve static files (e.g. htmx.min.js) at /static
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.get("/")

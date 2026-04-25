@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>App</title>
+  <script src="/static/htmx.min.js"></script>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { text-align: left; padding: 0.4rem 0.6rem; border-bottom: 1px solid #ddd; }
+    th { background: #f4f4f4; }
+    .done { text-decoration: line-through; color: #888; }
+    .error { color: red; }
+    button { cursor: pointer; }
+  </style>
+</head>
+<body>
+  {% if user %}
+    {% include "htmx/_app.html" %}
+  {% else %}
+    {% include "htmx/_login.html" %}
+  {% endif %}
+</body>
+</html>

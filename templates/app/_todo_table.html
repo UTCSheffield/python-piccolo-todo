@@ -1,0 +1,28 @@
+<table id="todo-table">
+  <thead><tr>
+    <th>Task</th>
+    <th>Category</th>
+    <th>Done</th>
+    <th></th>
+  </tr></thead>
+  <tbody>
+  {% for item in todos %}
+  <tr>
+    <td>{{ item.task }}</td>
+    <td>{{ item['category.name'] or '—' }}</td>
+    <td>
+      <form class="inline" action="/app/todos/{{ item.id }}/toggle_done" method="post">
+        <button type="submit">{{ '✅' if item.done else '⬜' }}</button>
+      </form>
+    </td>
+    <td>
+      <form class="inline" action="/app/todos/{{ item.id }}/delete" method="post">
+        <button type="submit" onclick="return confirm('Delete this Todo?')">🗑</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="10" style="text-align:center;color:#888">No todos yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
