@@ -11,7 +11,7 @@ export const TodoShow = () => {
   const { data, isLoading } = query;
   const record = data?.data;
 
-  const { data: categoryData, isLoading: categoryLoading } = useOne<ICategory>({
+  const { query: categoryQuery } = useOne<ICategory>({
     resource: "categories",
     id: record?.category ?? "",
     queryOptions: { enabled: !!record },
@@ -26,7 +26,7 @@ export const TodoShow = () => {
       <Text>{record?.task}</Text>
 
       <Title level={5}>Category</Title>
-      <Text>{categoryLoading ? "…" : categoryData?.data?.name}</Text>
+  <Text>{categoryQuery.isLoading ? "…" : categoryQuery.data?.data?.name}</Text>
 
       <Title level={5}>Done</Title>
       {record?.done ? (

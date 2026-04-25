@@ -55,6 +55,22 @@ def test_register_login_state_and_session_endpoint(client: TestClient):
     assert session_payload["user"]["username"] == username
 
 
+def test_categories_api_is_read_only(client: TestClient):
+    category_id = _get_category_id(client=client)
+
+    create_response = client.post("/api/categories/", json={"name": "Blocked category"})
+    assert create_response.status_code == 405
+
+    update_response = client.put(
+        f"/api/categories/{category_id}/",
+        json={"name": "Still blocked"},
+    )
+    assert update_response.status_code == 405
+
+    delete_response = client.delete(f"/api/categories/{category_id}/")
+    assert delete_response.status_code == 405
+
+
 def test_todo_endpoints_enforce_owner_isolation(client: TestClient):
     category_id = _get_category_id(client=client)
 

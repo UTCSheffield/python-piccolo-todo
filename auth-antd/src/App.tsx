@@ -13,7 +13,6 @@ import {
 import {
   DashboardOutlined,
   CheckSquareOutlined,
-  AppstoreOutlined,
 } from "@ant-design/icons";
 
 import routerProvider, {
@@ -29,7 +28,6 @@ import "@ant-design/v5-patch-for-react-19";
 import "@refinedev/antd/dist/reset.css";
 
 import { TodoList, TodoCreate, TodoEdit, TodoShow } from "./pages/todos";
-import { CategoryList, CategoryCreate, CategoryEdit } from "./pages/categories";
 import { DashboardPage } from "./pages/dashboard";
 import { piccoloDataProvider } from "./lib/dataProvider";
 
@@ -142,13 +140,6 @@ const App: React.FC = () => {
                 show: "/todos/show/:id",
                 meta: { label: "Todos", icon: <CheckSquareOutlined /> },
               },
-              {
-                name: "categories",
-                list: "/categories",
-                create: "/categories/create",
-                edit: "/categories/edit/:id",
-                meta: { label: "Categories", icon: <AppstoreOutlined /> },
-              },
             ]}
             notificationProvider={useNotificationProvider}
             options={{
@@ -176,12 +167,6 @@ const App: React.FC = () => {
                   <Route path="create" element={<TodoCreate />} />
                   <Route path="edit/:id" element={<TodoEdit />} />
                   <Route path="show/:id" element={<TodoShow />} />
-                </Route>
-
-                <Route path="/categories">
-                  <Route index element={<CategoryList />} />
-                  <Route path="create" element={<CategoryCreate />} />
-                  <Route path="edit/:id" element={<CategoryEdit />} />
                 </Route>
               </Route>
 
