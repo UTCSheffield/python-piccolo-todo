@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Piccolo Todo Expo",
+    "slug": "piccolo-todo-expo",
+    "scheme": "piccolotodoexpo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}

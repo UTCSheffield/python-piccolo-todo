@@ -181,6 +181,61 @@ rm -rf ./my-new-app
 node ./scripts/scaffold-openapi/dist/index.js create http://localhost:8000/openapi.json ./my-new-app --app-name "Piccolo Todo"
 ```
 
+## Run OpenAPI Scaffold Expo App
+
+The repository also includes an OpenAPI-to-Expo scaffold tool in `scripts/scaffold-openapi-expo/`.
+
+It generates an Expo Router app from your API schema, including:
+
+1. Login and register screens
+2. Per-resource list screens
+3. Per-resource edit screens (for resources with update endpoints)
+4. Field-aware controls (`TextInput`, `Switch`, and simple FK selectors)
+
+### Generate and Run
+
+1. Start backend API from the project root:
+
+   ```bash
+   python -m uvicorn app:app --reload
+   ```
+
+2. Build the Expo scaffold tool:
+
+   ```bash
+   cd scripts/scaffold-openapi-expo
+   npm install
+   npm run build
+   cd ../..
+   ```
+
+3. Generate an Expo app from OpenAPI schema:
+
+   ```bash
+   node ./scripts/scaffold-openapi-expo/dist/index.js create http://localhost:8000/openapi.json ./my-new-expo-app --app-name "Piccolo Todo Expo"
+   ```
+
+4. Install and run the generated Expo app:
+
+   ```bash
+   cd my-new-expo-app
+   npm install
+   npm run web
+   ```
+
+   In Codespaces, you can use:
+
+   ```bash
+   npm run web:codespaces
+   ```
+
+   This auto-sets `EXPO_PUBLIC_API_URL` to your forwarded backend URL when not already set.
+
+Notes:
+
+1. For native devices, set `EXPO_PUBLIC_API_URL` in the generated `.env` file so the app can reach your backend.
+2. Session auth is cookie-based in this project; web works best out of the box.
+
 ## API Endpoints
 
 The following endpoint groups are mounted and documented in Swagger:
