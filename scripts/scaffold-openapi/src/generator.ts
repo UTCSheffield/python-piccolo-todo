@@ -7,7 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import { OpenAPISchema, EndpointInfo } from './parser.js';
 
-// ─── Schema helpers ────────────────────────────────────────────────────────
+// Schema helpers
 
 let _components: Record<string, Record<string, unknown>> = {};
 
@@ -18,7 +18,6 @@ function resolveRef(schema: Record<string, unknown>): Record<string, unknown> {
   return _components[name] ?? schema;
 }
 
-/** Return a normalised {type} string from a schema node that may use anyOf. */
 function resolveType(fieldSchema: Record<string, unknown>): string {
   if (fieldSchema.type) return fieldSchema.type as string;
   const anyOf = fieldSchema.anyOf as Record<string, unknown>[] | undefined;
@@ -29,69 +28,97 @@ function resolveType(fieldSchema: Record<string, unknown>): string {
   return 'string';
 }
 
-// ─── Template functions ────────────────────────────────────────────────────
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function singular(label: string): string {
+  return label.endsWith('ies')
+    ? label.slice(0, -3) + 'y'
+    : label.endsWith('s')
+    ? label.slice(0, -1)
+    : label;
+}
+
+function pluralizeTable(name: string): string {
+  return name.endsWith('y') ? `${name.slice(0, -1)}ies` : `${name}s`;
+}
+
+// Template functions
 
 function tplPackageJson(appName: string): string {
-  return JSON.stringify({
-    name: appName,
-    version: '1.0.0',
-    description: 'Generated React app from OpenAPI schema',
-    type: 'module',
-    scripts: {
-      dev: 'vite',
-      build: 'tsc && vite build',
-      preview: 'vite preview',
+  return JSON.stringify(
+    {
+      name: appName,
+      version: '1.0.0',
+      description: 'Generated React app from OpenAPI schema',
+      type: 'module',
+      scripts: {
+        dev: 'vite',
+        build: 'tsc && vite build',
+        preview: 'vite preview',
+      },
+      dependencies: {
+        react: '^18.2.0',
+        'react-dom': '^18.2.0',
+        'react-router-dom': '^6.28.0',
+      },
+      devDependencies: {
+        '@types/react': '^18.2.37',
+        '@types/react-dom': '^18.2.15',
+        '@vitejs/plugin-react': '^4.2.1',
+        typescript: '^5.3.3',
+        vite: '^5.0.8',
+      },
     },
-    dependencies: {
-      react: '^18.2.0',
-      'react-dom': '^18.2.0',
-      'react-router-dom': '^6.28.0',
-    },
-    devDependencies: {
-      '@types/react': '^18.2.37',
-      '@types/react-dom': '^18.2.15',
-      '@vitejs/plugin-react': '^4.2.1',
-      typescript: '^5.3.3',
-      vite: '^5.0.8',
-    },
-  }, null, 2);
+    null,
+    2,
+  );
 }
 
 function tplTsConfig(): string {
-  return JSON.stringify({
-    compilerOptions: {
-      target: 'ES2020',
-      useDefineForClassFields: true,
-      lib: ['ES2020', 'DOM', 'DOM.Iterable'],
-      module: 'ESNext',
-      moduleResolution: 'bundler',
-      skipLibCheck: true,
-      esModuleInterop: true,
-      allowSyntheticDefaultImports: true,
-      strict: true,
-      noUnusedLocals: true,
-      noUnusedParameters: true,
-      noFallthroughCasesInSwitch: true,
-      forceConsistentCasingInFileNames: true,
-      resolveJsonModule: true,
-      jsx: 'react-jsx',
+  return JSON.stringify(
+    {
+      compilerOptions: {
+        target: 'ES2020',
+        useDefineForClassFields: true,
+        lib: ['ES2020', 'DOM', 'DOM.Iterable'],
+        module: 'ESNext',
+        moduleResolution: 'bundler',
+        skipLibCheck: true,
+        esModuleInterop: true,
+        allowSyntheticDefaultImports: true,
+        strict: true,
+        noUnusedLocals: true,
+        noUnusedParameters: true,
+        noFallthroughCasesInSwitch: true,
+        forceConsistentCasingInFileNames: true,
+        resolveJsonModule: true,
+        jsx: 'react-jsx',
+      },
+      include: ['src'],
+      references: [{ path: './tsconfig.node.json' }],
     },
-    include: ['src'],
-    references: [{ path: './tsconfig.node.json' }],
-  }, null, 2);
+    null,
+    2,
+  );
 }
 
 function tplTsConfigNode(): string {
-  return JSON.stringify({
-    compilerOptions: {
-      composite: true,
-      skipLibCheck: true,
-      module: 'ESNext',
-      moduleResolution: 'bundler',
-      allowSyntheticDefaultImports: true,
+  return JSON.stringify(
+    {
+      compilerOptions: {
+        composite: true,
+        skipLibCheck: true,
+        module: 'ESNext',
+        moduleResolution: 'bundler',
+        allowSyntheticDefaultImports: true,
+      },
+      include: ['vite.config.ts'],
     },
-    include: ['vite.config.ts'],
-  }, null, 2);
+    null,
+    2,
+  );
 }
 
 function tplViteConfig(): string {
@@ -104,7 +131,6 @@ export default defineConfig({
     host: true,
     strictPort: true,
     port: 5300,
-    // Proxy /api requests to your backend during development
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
@@ -163,11 +189,6 @@ body {
 function tplApiConfig(): string {
   return `/// <reference types="vite/client" />
 
-/**
- * API configuration.
- * In development, Vite proxies /api requests to the backend.
- * Set VITE_API_URL in .env for production overrides.
- */
 export function getApiBaseUrl(): string {
   return import.meta.env.VITE_API_URL?.replace(/\\/$/, '') ?? '';
 }
@@ -175,12 +196,9 @@ export function getApiBaseUrl(): string {
 }
 
 function tplApiClient(endpoints: EndpointInfo[]): string {
-  // Detect session-style auth endpoints
   const hasSession = endpoints.some(e => e.path.includes('/session'));
 
   return `import { getApiBaseUrl } from './config';
-
-// ─── Types ────────────────────────────────────────────────────────────────
 
 export type SessionResponse = {
   authenticated: boolean;
@@ -189,13 +207,11 @@ export type SessionResponse = {
 
 export type ListResponse<T> = { rows: T[]; count?: number };
 
-// ─── Core request helper ──────────────────────────────────────────────────
-
 const base = getApiBaseUrl();
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(\`\${base}\${path}\`, {
-    credentials: 'include', // sends session cookies automatically
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...init?.headers },
     ...init,
   });
@@ -205,7 +221,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(text || \`\${res.status} \${res.statusText}\`);
   }
 
-  // 204 No Content → return undefined rather than failing to parse
   if (res.status === 204) return undefined as T;
 
   const ct = res.headers.get('content-type') ?? '';
@@ -214,10 +229,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-// ─── Session / Auth ───────────────────────────────────────────────────────
-${hasSession ? `
-export const checkSession = () =>
-  request<SessionResponse>('/api/session');
+${hasSession ? `export const checkSession = () => request<SessionResponse>('/api/session');
 
 export const login = (username: string, password: string) =>
   request<void>('/api/session/login', {
@@ -231,22 +243,17 @@ export const register = (username: string, password: string) =>
     body: JSON.stringify({ username, password }),
   });
 
-export const logout = () =>
-  request<void>('/api/session/logout', { method: 'POST' });
-` : `
-// TODO: replace with your auth endpoints
-export const checkSession = () =>
-  request<SessionResponse>('/api/session');
+export const logout = () => request<void>('/api/session/logout', { method: 'POST' });
+` : `export const checkSession = () => request<SessionResponse>('/api/session');
+
 export const login = (username: string, password: string) =>
   request<void>('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) });
+
 export const register = (username: string, password: string) =>
   request<void>('/api/auth/register', { method: 'POST', body: JSON.stringify({ username, password }) });
-export const logout = () =>
-  request<void>('/api/auth/logout', { method: 'POST' });
+
+export const logout = () => request<void>('/api/auth/logout', { method: 'POST' });
 `}
-// ─── Generic CRUD helpers ─────────────────────────────────────────────────
-// These work with any REST resource. Replace with resource-specific
-// functions as your app grows.
 
 export const getItems = <T>(resource: string): Promise<T[]> =>
   request<ListResponse<T>>(\`/api/\${resource}/\`).then(d => d.rows ?? []);
@@ -265,38 +272,67 @@ export const deleteItem = (resource: string, id: number): Promise<void> =>
 `;
 }
 
-// ─── Resource extraction ──────────────────────────────────────────────────
+function tplEntityCommon(): string {
+  return `import type { Dispatch, SetStateAction } from 'react';
+import type { SessionResponse } from '../api/client';
+
+export const section: React.CSSProperties = { border: '1px solid #d9d9d9', borderRadius: 8, padding: 16, marginBottom: 16 };
+export const btn: React.CSSProperties = { padding: '8px 16px', backgroundColor: '#1890ff', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 14 };
+export const inp: React.CSSProperties = { padding: '8px 10px', border: '1px solid #d9d9d9', borderRadius: 4, fontSize: 14 };
+export const th: React.CSSProperties = { padding: '8px 6px', fontWeight: 600, borderBottom: '2px solid #f0f0f0', textAlign: 'left' };
+export const td: React.CSSProperties = { padding: '6px', borderBottom: '1px solid #f9f9f9' };
+
+export type PageProps = {
+  session: SessionResponse;
+  setError: Dispatch<SetStateAction<string | null>>;
+};
+
+export function displayFkLabel(options: Array<{ id: number; [k: string]: unknown }>, value: unknown): string {
+  const hit = options.find(o => o.id === value);
+  if (!hit) return String(value ?? '');
+  return String(hit.name ?? hit.title ?? hit.label ?? hit.id);
+}
+`;
+}
+
+// Resource extraction
 
 interface ResourceField {
   name: string;
   type: 'string' | 'number' | 'boolean';
-  fkResource?: string; // e.g. "categories" — if set, render as a select dropdown
+  fkResource?: string;
 }
 
 interface ResourceDef {
-  name: string;       // e.g. "todos"
-  label: string;      // e.g. "Todos"
+  name: string;
+  label: string;
   fields: ResourceField[];
   canCreate: boolean;
   canUpdate: boolean;
   canDelete: boolean;
-  ownerField?: string; // field name that holds the owning user id, e.g. "user"
+  ownerField?: string;
 }
 
-/**
- * Walk the schema's paths and extract user-facing resources with their
- * POST request body fields (used to render create forms).
- */
-function extractResources(endpoints: EndpointInfo[], components: Record<string, Record<string, unknown>>): ResourceDef[] {
+function extractResources(
+  endpoints: EndpointInfo[],
+  components: Record<string, Record<string, unknown>>,
+): ResourceDef[] {
   _components = components;
-  const SKIP = new Set(['/api/session', '/api/session/login', '/api/session/logout',
-                        '/api/auth/login', '/api/auth/logout', '/api/health']);
 
-  // Collect unique collection paths: /api/<resource>/
+  const SKIP = new Set([
+    '/api/session',
+    '/api/session/login',
+    '/api/session/register',
+    '/api/session/logout',
+    '/api/auth/login',
+    '/api/auth/register',
+    '/api/auth/logout',
+    '/api/health',
+  ]);
+
   const seen = new Map<string, ResourceDef>();
 
   for (const ep of endpoints) {
-    // Must be a collection path under /api/ — ends with trailing /
     const match = ep.path.match(/^\/api\/([^/{}]+)\/?$/);
     if (!match) continue;
     if (SKIP.has(ep.path.replace(/\/$/, ''))) continue;
@@ -305,228 +341,281 @@ function extractResources(endpoints: EndpointInfo[], components: Record<string, 
     if (!seen.has(name)) {
       seen.set(name, {
         name,
-        label: name.charAt(0).toUpperCase() + name.slice(1),
+        label: cap(name),
         fields: [],
         canCreate: false,
         canUpdate: false,
         canDelete: false,
       });
     }
+
     const res = seen.get(name)!;
 
     if (ep.method === 'POST') {
       res.canCreate = true;
-      // Extract fields from request body schema
-      let rawSchema = ep.requestBody?.content?.['application/json']?.schema as Record<string, unknown> | undefined;
-      if (rawSchema) rawSchema = resolveRef(rawSchema);
-      if (rawSchema?.properties) {
-        const props = rawSchema.properties as Record<string, Record<string, unknown>>;
-        for (const [fieldName, fieldSchema] of Object.entries(props)) {
-          if (fieldName === 'id') continue; // skip auto-generated id
-          const t = resolveType(fieldSchema);
-          // Detect ownership: integer field whose name is 'user' or ends with '_user'
-          const isOwnerField =
-            (t === 'integer' || t === 'number') &&
-            (fieldName === 'user' || fieldName.endsWith('_user'));
-          if (isOwnerField) {
-            res.ownerField = fieldName;
-            continue; // don't add to fields — server sets this automatically
-          }
-          const extra = fieldSchema.extra as Record<string, unknown> | undefined;
-          const fk = extra?.foreign_key as Record<string, unknown> | undefined;
-          const fkTable = fk?.to as string | undefined;
-          // Pluralise table name: category→categories, user→users, etc.
-          const fkResource = fkTable
-            ? (fkTable.endsWith('y') ? fkTable.slice(0, -1) + 'ies' : fkTable + 's')
-            : undefined;
-          res.fields.push({
-            name: fieldName,
-            type: t === 'integer' || t === 'number' ? 'number' : t === 'boolean' ? 'boolean' : 'string',
-            fkResource,
-          });
+      let schema = ep.requestBody?.content?.['application/json']?.schema as Record<string, unknown> | undefined;
+      if (schema) schema = resolveRef(schema);
+      if (!schema?.properties) continue;
+
+      const props = schema.properties as Record<string, Record<string, unknown>>;
+      for (const [fieldName, fieldSchema] of Object.entries(props)) {
+        if (fieldName === 'id') continue;
+
+        const t = resolveType(fieldSchema);
+        const isOwnerField =
+          (t === 'integer' || t === 'number') &&
+          (fieldName === 'user' || fieldName.endsWith('_user'));
+
+        if (isOwnerField) {
+          res.ownerField = fieldName;
+          continue;
         }
+
+        const extra = fieldSchema.extra as Record<string, unknown> | undefined;
+        const fk = extra?.foreign_key as Record<string, unknown> | undefined;
+        const fkTable = fk?.to as string | undefined;
+
+        res.fields.push({
+          name: fieldName,
+          type: t === 'integer' || t === 'number' ? 'number' : t === 'boolean' ? 'boolean' : 'string',
+          fkResource: fkTable ? pluralizeTable(fkTable) : undefined,
+        });
       }
     }
 
     if (ep.method === 'DELETE') res.canDelete = true;
   }
 
-  // Also mark delete available if there's a matching /{id}/ path
   for (const ep of endpoints) {
     const match = ep.path.match(/^\/api\/([^/{}]+)\/\{[^}]+\}\/?$/);
     if (!match) continue;
     const res = seen.get(match[1]);
-    if (res && (ep.method === 'PUT' || ep.method === 'PATCH')) res.canUpdate = true;
-    if (res && ep.method === 'DELETE') res.canDelete = true;
+    if (!res) continue;
+    if (ep.method === 'PUT' || ep.method === 'PATCH') res.canUpdate = true;
+    if (ep.method === 'DELETE') res.canDelete = true;
   }
 
-  // Drop read-only resources (no create, update, or delete) — nothing useful to show
   return Array.from(seen.values()).filter(r => r.canCreate || r.canUpdate || r.canDelete);
 }
 
-// ─── Per-resource section generator ──────────────────────────────────────
+// Per-resource file generator
 
-function renderResourceSection(res: ResourceDef): string {
-  const R = res.name; // e.g. "todos"
-  const label = res.label; // e.g. "Todos"
-  // Singularize: strip trailing 'ies'→'y', 's' → ''
-  const TypeName = label.endsWith('ies')
-    ? label.slice(0, -3) + 'y'
-    : label.endsWith('s')
-    ? label.slice(0, -1)
-    : label;
+function renderResourceEntityFile(res: ResourceDef): string {
+  const R = res.name;
+  const label = res.label;
+  const typeName = singular(label);
 
-  // Build form fields
   const fkResources = [...new Set(res.fields.filter(f => f.fkResource).map(f => f.fkResource!))];
   const fkOptionStates = fkResources.map(r =>
-    `  const [${r}Options, set${cap(r)}Options] = useState<{id:number;[k:string]:unknown}[]>([]);`
+    `  const [${r}Options, set${cap(r)}Options] = useState<{id:number;[k:string]:unknown}[]>([]);`,
   ).join('\n');
+
   const fkOptionLoaders = fkResources.map(r =>
-    `  useEffect(() => { if (session.authenticated) getItems<{id:number;[k:string]:unknown}>('${r}').then(set${cap(r)}Options).catch(() => {}); }, [session]);`
+    `  useEffect(() => { if (session.authenticated) getItems<{id:number;[k:string]:unknown}>('${r}').then(set${cap(r)}Options).catch(() => {}); }, [session]);`,
   ).join('\n');
 
-  const stateFields = res.fields
-    .map(f => {
-      if (f.type === 'boolean') return `  const [new${cap(f.name)}, setNew${cap(f.name)}] = useState<boolean>(false);`;
-      if (f.type === 'number')  return `  const [new${cap(f.name)}, setNew${cap(f.name)}] = useState<string>('');`;
-      return                           `  const [new${cap(f.name)}, setNew${cap(f.name)}] = useState('');`;
-    })
-    .join('\n');
+  const newStateFields = res.fields.map(f => {
+    if (f.type === 'boolean') return `  const [new${cap(f.name)}, setNew${cap(f.name)}] = useState<boolean>(false);`;
+    if (f.type === 'number') return `  const [new${cap(f.name)}, setNew${cap(f.name)}] = useState<string>('');`;
+    return `  const [new${cap(f.name)}, setNew${cap(f.name)}] = useState('');`;
+  }).join('\n');
 
-  const editStateFields = res.fields
-    .map(f => {
-      if (f.type === 'boolean') return `  const [edit${cap(f.name)}, setEdit${cap(f.name)}] = useState<boolean>(false);`;
-      if (f.type === 'number')  return `  const [edit${cap(f.name)}, setEdit${cap(f.name)}] = useState<string>('');`;
-      return                           `  const [edit${cap(f.name)}, setEdit${cap(f.name)}] = useState('');`;
-    })
-    .join('\n');
+  const editStateFields = res.fields.map(f => {
+    if (f.type === 'boolean') return `  const [edit${cap(f.name)}, setEdit${cap(f.name)}] = useState<boolean>(false);`;
+    if (f.type === 'number') return `  const [edit${cap(f.name)}, setEdit${cap(f.name)}] = useState<string>('');`;
+    return `  const [edit${cap(f.name)}, setEdit${cap(f.name)}] = useState('');`;
+  }).join('\n');
 
-  const submitPayload = res.fields
-    .map(f => {
-      if (f.type === 'number')  return `      ${f.name}: Number(new${cap(f.name)}),`;
-      if (f.type === 'boolean') return `      ${f.name}: new${cap(f.name)},`;
-      return                           `      ${f.name}: new${cap(f.name)},`;
-    })
-    .join('\n');
+  const createPayload = res.fields.map(f => {
+    if (f.type === 'number') return `      ${f.name}: Number(new${cap(f.name)}),`;
+    if (f.type === 'boolean') return `      ${f.name}: new${cap(f.name)},`;
+    return `      ${f.name}: new${cap(f.name)},`;
+  }).join('\n');
 
-  const updatePayload = res.fields
-    .map(f => {
-      if (f.type === 'number')  return `      ${f.name}: Number(edit${cap(f.name)}),`;
-      if (f.type === 'boolean') return `      ${f.name}: edit${cap(f.name)},`;
-      return                           `      ${f.name}: edit${cap(f.name)},`;
-    })
-    .join('\n');
+  const updatePayload = res.fields.map(f => {
+    if (f.type === 'number') return `      ${f.name}: Number(edit${cap(f.name)}),`;
+    if (f.type === 'boolean') return `      ${f.name}: edit${cap(f.name)},`;
+    return `      ${f.name}: edit${cap(f.name)},`;
+  }).join('\n');
 
-  const resetFields = res.fields
-    .map(f => {
-      if (f.type === 'boolean') return `      setNew${cap(f.name)}(false);`;
-      if (f.type === 'number')  return `      setNew${cap(f.name)}('');`;
-      return                           `      setNew${cap(f.name)}('');`;
-    })
-    .join('\n');
+  const resetFields = res.fields.map(f => {
+    if (f.type === 'boolean') return `      setNew${cap(f.name)}(false);`;
+    if (f.type === 'number') return `      setNew${cap(f.name)}('');`;
+    return `      setNew${cap(f.name)}('');`;
+  }).join('\n');
 
-  const formInputs = res.fields
-    .map(f => {
-      if (f.type === 'boolean') {
-        return `              <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <input type="checkbox" checked={new${cap(f.name)}} onChange={e => setNew${cap(f.name)}(e.target.checked)} />
-                ${f.name}
-              </label>`;
-      }
-      if (f.fkResource) {
-        return `              <select value={new${cap(f.name)}} onChange={e => setNew${cap(f.name)}(e.target.value)} style={inp}>
-                <option value="">-- ${f.name} --</option>
-                {${f.fkResource}Options.map(opt => (
-                  <option key={opt.id} value={String(opt.id)}>{String(opt.name ?? opt.title ?? opt.label ?? opt.id)}</option>
-                ))}
-              </select>`;
-      }
-      return `              <input
-                type="${f.type === 'number' ? 'number' : 'text'}"
-                placeholder="${f.name}"
-                value={new${cap(f.name)}}
-                onChange={e => setNew${cap(f.name)}(e.target.value)}
-                style={inp}
-              />`;
-    })
-    .join('\n');
+  const createInputs = res.fields.map(f => {
+    if (f.type === 'boolean') {
+      return `          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <input type="checkbox" checked={new${cap(f.name)}} onChange={e => setNew${cap(f.name)}(e.target.checked)} />
+            ${f.name}
+          </label>`;
+    }
+    if (f.fkResource) {
+      return `          <select value={new${cap(f.name)}} onChange={e => setNew${cap(f.name)}(e.target.value)} style={inp}>
+            <option value="">-- ${f.name} --</option>
+            {${f.fkResource}Options.map(opt => (
+              <option key={opt.id} value={String(opt.id)}>{String(opt.name ?? opt.title ?? opt.label ?? opt.id)}</option>
+            ))}
+          </select>`;
+    }
+    return `          <input
+            type="${f.type === 'number' ? 'number' : 'text'}"
+            placeholder="${f.name}"
+            value={new${cap(f.name)}}
+            onChange={e => setNew${cap(f.name)}(e.target.value)}
+            style={inp}
+          />`;
+  }).join('\n');
 
-  const editInputs = res.fields
-    .map(f => {
-      if (f.type === 'boolean') {
-        return `              <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <input type="checkbox" checked={edit${cap(f.name)}} onChange={e => setEdit${cap(f.name)}(e.target.checked)} />
-                ${f.name}
-              </label>`;
-      }
-      if (f.fkResource) {
-        return `              <select value={edit${cap(f.name)}} onChange={e => setEdit${cap(f.name)}(e.target.value)} style={inp}>
-                <option value="">-- ${f.name} --</option>
-                {${f.fkResource}Options.map(opt => (
-                  <option key={opt.id} value={String(opt.id)}>{String(opt.name ?? opt.title ?? opt.label ?? opt.id)}</option>
-                ))}
-              </select>`;
-      }
-      return `              <input
-                type="${f.type === 'number' ? 'number' : 'text'}"
-                placeholder="${f.name}"
-                value={edit${cap(f.name)}}
-                onChange={e => setEdit${cap(f.name)}(e.target.value)}
-                style={inp}
-              />`;
-    })
-    .join('\n');
+  const editInputs = res.fields.map(f => {
+    if (f.type === 'boolean') {
+      return `          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <input type="checkbox" checked={edit${cap(f.name)}} onChange={e => setEdit${cap(f.name)}(e.target.checked)} />
+            ${f.name}
+          </label>`;
+    }
+    if (f.fkResource) {
+      return `          <select value={edit${cap(f.name)}} onChange={e => setEdit${cap(f.name)}(e.target.value)} style={inp}>
+            <option value="">-- ${f.name} --</option>
+            {${f.fkResource}Options.map(opt => (
+              <option key={opt.id} value={String(opt.id)}>{String(opt.name ?? opt.title ?? opt.label ?? opt.id)}</option>
+            ))}
+          </select>`;
+    }
+    return `          <input
+            type="${f.type === 'number' ? 'number' : 'text'}"
+            placeholder="${f.name}"
+            value={edit${cap(f.name)}}
+            onChange={e => setEdit${cap(f.name)}(e.target.value)}
+            style={inp}
+          />`;
+  }).join('\n');
 
-  // Build table columns — skip id if boring
-  const columns = res.fields.length > 0
-    ? ['id', ...res.fields.map(f => f.name)]
-    : ['id'];
-
-  const thCells = columns.map(c => `<th align="left" style={th}>${c}</th>`).join('\n                  ');
+  const columns = res.fields.length > 0 ? ['id', ...res.fields.map(f => f.name)] : ['id'];
+  const thCells = columns.map(c => `<th align="left" style={th}>${c}</th>`).join('\n              ');
   const tdCells = columns.map(c => {
     if (c === 'id') return `<td style={td}>{(item as Record<string,unknown>).id as number}</td>`;
     const field = res.fields.find(f => f.name === c);
     if (field?.fkResource) {
-      return `<td style={td}>{String(${field.fkResource}Options.find(o => o.id === (item as Record<string,unknown>).${c})?.name ?? ${field.fkResource}Options.find(o => o.id === (item as Record<string,unknown>).${c})?.title ?? (item as Record<string,unknown>).${c} ?? '')}</td>`;
+      return `<td style={td}>{displayFkLabel(${field.fkResource}Options, (item as Record<string,unknown>).${c})}</td>`;
     }
     if (field?.type === 'boolean') {
-      return `<td style={td}>{(item as Record<string,unknown>).${c} ? '✓' : '✗'}</td>`;
+      return `<td style={td}>{(item as Record<string,unknown>).${c} ? 'true' : 'false'}</td>`;
     }
     return `<td style={td}>{String((item as Record<string,unknown>).${c} ?? '')}</td>`;
-  }).join('\n                    ');
+  }).join('\n                ');
 
   const actionsHeader = (res.canUpdate || res.canDelete) ? '<th />' : '';
-  const ownerActionGuardStart = res.ownerField
+  const ownerGuardStart = res.ownerField
     ? `{(item as Record<string,unknown>).${res.ownerField} === session.user?.id && (`
     : '';
-  const ownerActionGuardEnd = res.ownerField ? `)}` : '';
-  const editButton = res.canUpdate
-    ? `<button onClick={() => onStartEdit${TypeName}(item as Record<string,unknown>)} style={{ ...btn, backgroundColor: '#faad14', padding: '4px 10px', marginRight: 8 }}>Edit</button>`
+  const ownerGuardEnd = res.ownerField ? `)}` : '';
+
+  const editAction = res.canUpdate
+    ? `<button onClick={() => navigate('/${R}/edit/' + String((item as Record<string,unknown>).id))} style={{ ...btn, backgroundColor: '#faad14', padding: '4px 10px', marginRight: 8 }}>Edit</button>`
     : '';
-  const deleteButton = res.canDelete
-    ? `<button onClick={() => onDelete${TypeName}((item as Record<string,unknown>).id as number)} style={{ ...btn, backgroundColor: '#ff4d4f', padding: '4px 10px' }}>Delete</button>`
-    : '';
-  const actionButtons = `<>
-${editButton}
-${deleteButton}
-</>`;
-  const actionsCell = (res.canUpdate || res.canDelete)
-    ? `<td style={td}>${ownerActionGuardStart}${actionButtons}${ownerActionGuardEnd}</td>`
+  const deleteAction = res.canDelete
+    ? `<button onClick={() => onDelete${typeName}((item as Record<string,unknown>).id as number)} style={{ ...btn, backgroundColor: '#ff4d4f', padding: '4px 10px' }}>Delete</button>`
     : '';
 
-  return `
-  // ── ${label} ──────────────────────────────────────────────────────
+  const actionsCell = (res.canUpdate || res.canDelete)
+    ? `<td style={td}>${ownerGuardStart}<>
+${editAction}
+${deleteAction}
+</>${ownerGuardEnd}</td>`
+    : '';
+
+  return `import { FormEvent, useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { getItems, getItem, createItem, updateItem, deleteItem } from '../api/client';
+import { btn, displayFkLabel, inp, PageProps, section, td, th } from './common';
+
+export const ${label}ListPage = ({ session, setError }: PageProps) => {
+  const navigate = useNavigate();
   const [${R}, set${label}] = useState<Record<string,unknown>[]>([]);
-${res.canUpdate ? `  const [loadedEdit${TypeName}Id, setLoadedEdit${TypeName}Id] = useState<number | null>(null);` : ''}
 ${fkOptionStates}
-${stateFields}
-${editStateFields}
+${newStateFields}
 ${fkOptionLoaders}
 
   const load${label} = () =>
     getItems<Record<string,unknown>>('${R}').then(set${label}).catch(e => setError(e instanceof Error ? e.message : 'Load failed'));
 
-${res.canUpdate ? `  const loadEdit${TypeName} = async (id: number) => {
+  useEffect(() => {
+    if (session.authenticated) void load${label}();
+  }, [session]);
+
+  const onCreate${typeName} = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    try {
+      if (${res.canCreate}) {
+        await createItem('${R}', {
+${createPayload}
+        });
+${resetFields}
+        await load${label}();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Create failed');
+    }
+  };
+
+  const onDelete${typeName} = async (id: number) => {
+    setError(null);
+    try {
+      if (${res.canDelete}) {
+        await deleteItem('${R}', id);
+        await load${label}();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed');
+    }
+  };
+
+  return (
+    <section style={section}>
+      <h2 style={{ marginTop: 0 }}>${label}</h2>
+      {${res.canCreate} && (
+        <form onSubmit={onCreate${typeName}} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+${createInputs}
+          <button type="submit" style={btn}>Add ${typeName}</button>
+        </form>
+      )}
+      {${R}.length === 0 ? (
+        <p style={{ color: '#999' }}>No ${R} yet.</p>
+      ) : (
+        <table cellPadding={6} style={{ borderCollapse: 'collapse', width: '100%' }}>
+          <thead>
+            <tr style={{ background: '#fafafa' }}>
+              ${thCells}
+              ${actionsHeader}
+            </tr>
+          </thead>
+          <tbody>
+            {${R}.map((item, i) => (
+              <tr key={i} style={{ borderTop: '1px solid #f0f0f0' }}>
+                ${tdCells}
+                ${actionsCell}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
+  );
+};
+
+export const ${typeName}EditPage = ({ session, setError }: PageProps) => {
+  const navigate = useNavigate();
+  const params = useParams<{ id: string }>();
+  const editId = Number(params.id);
+  const [loadedEditId, setLoadedEditId] = useState<number | null>(null);
+${fkOptionStates}
+${editStateFields}
+${fkOptionLoaders}
+
+  const loadEdit = async (id: number) => {
     try {
       const item = await getItem<Record<string,unknown>>('${R}', id);
 ${res.fields.map(f => {
@@ -536,156 +625,89 @@ ${res.fields.map(f => {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Load failed');
     }
-  };` : ''}
+  };
 
-  useEffect(() => { if (session.authenticated) load${label}(); }, [session]);
-${res.canCreate ? `
-  const onCreate${TypeName} = async (e: FormEvent<HTMLFormElement>) => {
+  useEffect(() => {
+    if (session.authenticated && Number.isFinite(editId) && loadedEditId !== editId) {
+      void loadEdit(editId);
+      setLoadedEditId(editId);
+    }
+  }, [session, params.id, loadedEditId]);
+
+  const onSave = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
     try {
-      await createItem('${R}', {
-${submitPayload}
-      });
-${resetFields}
-      await load${label}();
-    } catch (err) { setError(err instanceof Error ? err.message : 'Create failed'); }
-  };
-` : ''}${res.canDelete ? `
-  const onDelete${TypeName} = async (id: number) => {
-    setError(null);
-    try {
-      await deleteItem('${R}', id);
-      await load${label}();
-    } catch (err) { setError(err instanceof Error ? err.message : 'Delete failed'); }
-  };
-` : ''}${res.canUpdate ? `
-  const onStartEdit${TypeName} = (item: Record<string,unknown>) => {
-    setLoadedEdit${TypeName}Id(null);
-    navigate('/${R}/edit/' + String(item.id));
-  };
-
-  const onCancelEdit${TypeName} = () => {
-    setLoadedEdit${TypeName}Id(null);
-    navigate('/${R}');
-  };
-
-  const onSave${TypeName} = async (id: number, e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError(null);
-    try {
-      await updateItem('${R}', id, {
+      if (${res.canUpdate}) {
+        await updateItem('${R}', editId, {
 ${updatePayload}
-      });
-      await load${label}();
-      setLoadedEdit${TypeName}Id(id);
+        });
+      }
       navigate('/${R}');
-    } catch (err) { setError(err instanceof Error ? err.message : 'Update failed'); }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Update failed');
+    }
   };
-` : ''}
-  const ${label}ListRoute = () => session.authenticated && (
+
+  const onCancel = () => navigate('/${R}');
+
+  if (!${res.canUpdate}) {
+    return <section style={section}><p style={{ color: '#a8071a' }}>Editing is not available for this resource.</p></section>;
+  }
+
+  if (!Number.isFinite(editId)) {
+    return <section style={section}><p style={{ color: '#a8071a' }}>Invalid id.</p></section>;
+  }
+
+  return (
     <section style={section}>
-      <h2 style={{ marginTop: 0 }}>${label}</h2>
-${res.canCreate ? `
-      <form onSubmit={onCreate${TypeName}} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-${formInputs}
-        <button type="submit" style={btn}>Add ${TypeName}</button>
+      <h2 style={{ marginTop: 0 }}>Edit ${typeName}</h2>
+      <form onSubmit={onSave} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+${editInputs}
+        <button type="submit" style={{ ...btn, backgroundColor: '#52c41a' }}>Save ${typeName}</button>
+        <button type="button" onClick={onCancel} style={{ ...btn, backgroundColor: '#8c8c8c' }}>Cancel</button>
       </form>
-` : ''}
-      {${R}.length === 0 ? (
-        <p style={{ color: '#999' }}>No ${R} yet.</p>
-      ) : (
-        <table cellPadding={6} style={{ borderCollapse: 'collapse', width: '100%' }}>
-          <thead>
-            <tr style={{ background: '#fafafa' }}>
-                  ${thCells}
-                  ${actionsHeader}
-            </tr>
-          </thead>
-          <tbody>
-            {${R}.map((item, i) => (
-              <tr key={i} style={{ borderTop: '1px solid #f0f0f0' }}>
-                    ${tdCells}
-                    ${actionsCell}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
     </section>
   );
-${res.canUpdate ? `
-  const ${TypeName}EditRoute = () => {
-    const params = useParams<{ id: string }>();
-    const editId = Number(params.id);
-
-    useEffect(() => {
-      if (session.authenticated && Number.isFinite(editId) && loadedEdit${TypeName}Id !== editId) {
-        void loadEdit${TypeName}(editId);
-        setLoadedEdit${TypeName}Id(editId);
-      }
-    }, [session, params.id, loadedEdit${TypeName}Id]);
-
-    if (!Number.isFinite(editId)) {
-      return <section style={section}><p style={{ color: '#a8071a' }}>Invalid id.</p></section>;
-    }
-
-    return (
-      <section style={section}>
-        <h2 style={{ marginTop: 0 }}>Edit ${TypeName}</h2>
-        <form onSubmit={(e) => onSave${TypeName}(editId, e)} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-${editInputs}
-          <button type="submit" style={{ ...btn, backgroundColor: '#52c41a' }}>Save ${TypeName}</button>
-          <button type="button" onClick={onCancelEdit${TypeName}} style={{ ...btn, backgroundColor: '#8c8c8c' }}>Cancel</button>
-        </form>
-      </section>
-    );
-  };
-` : ''}
+};
 `;
 }
 
-function cap(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-// ─── App.tsx template ─────────────────────────────────────────────────────
+// App.tsx template
 
 function tplAppTsx(title: string, resources: ResourceDef[]): string {
-  const needsCreate = resources.some(r => r.canCreate);
-  const needsUpdate = resources.some(r => r.canUpdate);
-  const needsDelete = resources.some(r => r.canDelete);
   const firstResource = resources[0]?.name;
-  const crudImports = resources.length > 0
-    ? `import { checkSession, login, register, logout, SessionResponse, getItems${needsUpdate ? ', getItem' : ''}${needsCreate ? ', createItem' : ''}${needsUpdate ? ', updateItem' : ''}${needsDelete ? ', deleteItem' : ''} } from './api/client';`
-    : `import { checkSession, login, register, logout, SessionResponse } from './api/client';`;
 
-  const resourceSections = resources.map(renderResourceSection).join('\n');
+  const entityImports = resources.map(r => {
+    const t = singular(r.label);
+    return `import { ${r.label}ListPage, ${t}EditPage } from './entities/${r.name}';`;
+  }).join('\n');
+
   const routeDefs = resources.map(r => {
-    const typeName = singular(r.label);
-    const editRoute = r.canUpdate ? `\n              <Route path="/${r.name}/edit/:id" element={<${typeName}EditRoute />} />` : '';
-    return `              <Route path="/${r.name}" element={<${r.label}ListRoute />} />${editRoute}`;
+    const t = singular(r.label);
+    const editRoute = r.canUpdate
+      ? `\n          <Route path="/${r.name}/edit/:id" element={<${t}EditPage session={session} setError={setError} />} />`
+      : '';
+    return `          <Route path="/${r.name}" element={<${r.label}ListPage session={session} setError={setError} />} />${editRoute}`;
   }).join('\n');
 
   return `import { FormEvent, useEffect, useState } from 'react';
-import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
-${crudImports}
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { checkSession, login, register, logout, SessionResponse } from './api/client';
+${entityImports}
 
 const section: React.CSSProperties = { border: '1px solid #d9d9d9', borderRadius: 8, padding: 16, marginBottom: 16 };
 const btn: React.CSSProperties = { padding: '8px 16px', backgroundColor: '#1890ff', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 14 };
 const inp: React.CSSProperties = { padding: '8px 10px', border: '1px solid #d9d9d9', borderRadius: 4, fontSize: 14 };
-const th: React.CSSProperties = { padding: '8px 6px', fontWeight: 600, borderBottom: '2px solid #f0f0f0', textAlign: 'left' };
-const td: React.CSSProperties = { padding: '6px', borderBottom: '1px solid #f9f9f9' };
 
 export const App = () => {
-  const navigate = useNavigate();
   const [session, setSession] = useState<SessionResponse>({ authenticated: false });
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-${resourceSections}
+
   useEffect(() => {
     checkSession()
       .then(setSession)
@@ -700,7 +722,9 @@ ${resourceSections}
       await login(username, password);
       setPassword('');
       setSession(await checkSession());
-    } catch (err) { setError(err instanceof Error ? err.message : 'Login failed'); }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+    }
   };
 
   const onRegister = async (e: FormEvent<HTMLFormElement>) => {
@@ -711,16 +735,22 @@ ${resourceSections}
       await login(username, password);
       setPassword('');
       setSession(await checkSession());
-    } catch (err) { setError(err instanceof Error ? err.message : 'Register failed'); }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Register failed');
+    }
   };
 
   const onLogout = async () => {
     setError(null);
-    try { await logout(); setSession({ authenticated: false }); }
-    catch (err) { setError(err instanceof Error ? err.message : 'Logout failed'); }
+    try {
+      await logout();
+      setSession({ authenticated: false });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Logout failed');
+    }
   };
 
-  if (loading) return <main style={{ padding: 24 }}>Loading…</main>;
+  if (loading) return <main style={{ padding: 24 }}>Loading...</main>;
 
   return (
     <main style={{ fontFamily: 'sans-serif', maxWidth: 960, margin: '24px auto', padding: 16 }}>
@@ -736,11 +766,7 @@ ${resourceSections}
             <label>Password<input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" style={{ ...inp, marginLeft: 8 }} /></label>
             <div style={{ display: 'flex', gap: 8 }}>
               <button type="submit" style={btn}>{authMode === 'login' ? 'Sign in' : 'Register'}</button>
-              <button
-                type="button"
-                style={{ ...btn, backgroundColor: '#8c8c8c' }}
-                onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
-              >
+              <button type="button" style={{ ...btn, backgroundColor: '#8c8c8c' }} onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}>
                 {authMode === 'login' ? 'Need an account?' : 'Have an account?'}
               </button>
             </div>
@@ -766,14 +792,6 @@ ${routeDefs}
 `;
 }
 
-function singular(label: string): string {
-  return label.endsWith('ies')
-    ? label.slice(0, -3) + 'y'
-    : label.endsWith('s')
-    ? label.slice(0, -1)
-    : label;
-}
-
 function tplEnv(): string {
   return `# Point at your backend in production.
 # In development, Vite proxies /api automatically (see vite.config.ts).
@@ -781,7 +799,7 @@ VITE_API_URL=
 `;
 }
 
-// ─── Main generate function ────────────────────────────────────────────────
+// Main generate function
 
 export async function generateApp(
   schema: OpenAPISchema,
@@ -798,19 +816,24 @@ export async function generateApp(
 
   const resources = extractResources(schema.endpoints, schema.components);
   if (resources.length > 0) {
-    console.log(`  📋 Detected resources: ${resources.map(r => r.name).join(', ')}`);
+    console.log(`  Detected resources: ${resources.map(r => r.name).join(', ')}`);
   }
 
-  write('package.json',        tplPackageJson(appName));
-  write('tsconfig.json',       tplTsConfig());
-  write('tsconfig.node.json',  tplTsConfigNode());
-  write('vite.config.ts',      tplViteConfig());
-  write('index.html',          tplIndexHtml(appName));
-  write('.gitignore',          'node_modules/\ndist/\n.env\n');
-  write('.env',                tplEnv());
-  write('src/main.tsx',        tplMainTsx());
-  write('src/index.css',       tplIndexCss());
-  write('src/App.tsx',         tplAppTsx(schema.title || appName, resources));
-  write('src/api/config.ts',   tplApiConfig());
-  write('src/api/client.ts',   tplApiClient(schema.endpoints));
+  write('package.json', tplPackageJson(appName));
+  write('tsconfig.json', tplTsConfig());
+  write('tsconfig.node.json', tplTsConfigNode());
+  write('vite.config.ts', tplViteConfig());
+  write('index.html', tplIndexHtml(appName));
+  write('.gitignore', 'node_modules/\ndist/\n.env\n');
+  write('.env', tplEnv());
+  write('src/main.tsx', tplMainTsx());
+  write('src/index.css', tplIndexCss());
+  write('src/App.tsx', tplAppTsx(schema.title || appName, resources));
+  write('src/api/config.ts', tplApiConfig());
+  write('src/api/client.ts', tplApiClient(schema.endpoints));
+  write('src/entities/common.ts', tplEntityCommon());
+
+  for (const res of resources) {
+    write(`src/entities/${res.name}.tsx`, renderResourceEntityFile(res));
+  }
 }

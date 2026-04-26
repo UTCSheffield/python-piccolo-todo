@@ -1,7 +1,5 @@
 import { getApiBaseUrl } from './config';
 
-// ─── Types ────────────────────────────────────────────────────────────────
-
 export type SessionResponse = {
   authenticated: boolean;
   user?: { id: number; username: string; email?: string };
@@ -9,13 +7,11 @@ export type SessionResponse = {
 
 export type ListResponse<T> = { rows: T[]; count?: number };
 
-// ─── Core request helper ──────────────────────────────────────────────────
-
 const base = getApiBaseUrl();
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${base}${path}`, {
-    credentials: 'include', // sends session cookies automatically
+    credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...init?.headers },
     ...init,
   });
@@ -25,7 +21,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(text || `${res.status} ${res.statusText}`);
   }
 
-  // 204 No Content → return undefined rather than failing to parse
   if (res.status === 204) return undefined as T;
 
   const ct = res.headers.get('content-type') ?? '';
@@ -34,10 +29,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-// ─── Session / Auth ───────────────────────────────────────────────────────
-
-export const checkSession = () =>
-  request<SessionResponse>('/api/session');
+export const checkSession = () => request<SessionResponse>('/api/session');
 
 export const login = (username: string, password: string) =>
   request<void>('/api/session/login', {
@@ -51,12 +43,8 @@ export const register = (username: string, password: string) =>
     body: JSON.stringify({ username, password }),
   });
 
-export const logout = () =>
-  request<void>('/api/session/logout', { method: 'POST' });
+export const logout = () => request<void>('/api/session/logout', { method: 'POST' });
 
-// ─── Generic CRUD helpers ─────────────────────────────────────────────────
-// These work with any REST resource. Replace with resource-specific
-// functions as your app grows.
 
 export const getItems = <T>(resource: string): Promise<T[]> =>
   request<ListResponse<T>>(`/api/${resource}/`).then(d => d.rows ?? []);

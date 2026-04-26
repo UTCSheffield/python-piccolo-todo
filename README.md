@@ -125,6 +125,62 @@ Notes:
 2. If backend runs on a different host, set `VITE_API_URL` for production builds.
 3. Category management is intentionally kept in `/admin`; user-facing frontends only consume category data.
 
+## Run OpenAPI Scaffold Frontend
+
+The repository includes an OpenAPI-to-React scaffold tool in `scripts/scaffold-openapi/`.
+
+It generates a standalone React app from your live API schema, including:
+
+1. Login and register UI
+2. Per-entity pages under `src/entities/`
+3. List and edit routes for editable resources
+4. Foreign key dropdowns (for example category selectors)
+
+### Generate and Run
+
+1. Start backend API from the project root:
+
+   ```bash
+   python -m uvicorn app:app --reload
+   ```
+
+2. Build the scaffold tool:
+
+   ```bash
+   cd scripts/scaffold-openapi
+   npm install
+   npm run build
+   cd ../..
+   ```
+
+3. Generate an app from the OpenAPI schema:
+
+   ```bash
+   node ./scripts/scaffold-openapi/dist/index.js create http://localhost:8000/openapi.json ./my-new-app --app-name "Piccolo Todo"
+   ```
+
+4. Install and run the generated app:
+
+   ```bash
+   cd my-new-app
+   npm install
+   npm run dev
+   ```
+
+5. Open the Vite URL shown in the terminal (typically `http://localhost:5300`).
+
+### Troubleshooting
+
+If you see an error like `ENOENT: process.cwd failed`, run commands from the repository root before deleting / regenerating `my-new-app`.
+
+Safe pattern:
+
+```bash
+cd /workspaces/python-piccolo-todo
+rm -rf ./my-new-app
+node ./scripts/scaffold-openapi/dist/index.js create http://localhost:8000/openapi.json ./my-new-app --app-name "Piccolo Todo"
+```
+
 ## API Endpoints
 
 The following endpoint groups are mounted and documented in Swagger:

@@ -7,7 +7,6 @@ export default defineConfig({
     host: true,
     strictPort: true,
     port: 5300,
-    // Proxy /api requests to your backend during development
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
