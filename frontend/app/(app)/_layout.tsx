@@ -1,7 +1,6 @@
 import React from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Link, Tabs } from 'expo-router';
-import { Pressable } from 'react-native';
+import { Tabs } from 'expo-router';
 
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
@@ -40,6 +39,18 @@ export default function AppLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
           headerShown: true,
           headerTitle: 'Profile',
+        }}
+      />
+      <Tabs.Screen
+        name="create-todo"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="edit-todo/[id]"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

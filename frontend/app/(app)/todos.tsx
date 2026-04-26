@@ -34,6 +34,17 @@ export default function TodoListScreen() {
     router.push('/(app)/create-todo');
   };
 
+  const handleEdit = (todo: Todo) => {
+    if (typeof todo.id !== 'number' || Number.isNaN(todo.id)) {
+      return;
+    }
+
+    router.push({
+      pathname: '/(app)/edit-todo/[id]',
+      params: { id: todo.id.toString() },
+    });
+  };
+
   if (isLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -108,7 +119,8 @@ export default function TodoListScreen() {
                 <View style={styles.actions}>
                   <Pressable
                     style={styles.actionButton}
-                    onPress={() => router.push(`/(app)/edit-todo/${item.id}`)}
+                    onPress={() => handleEdit(item)}
+                    disabled={typeof item.id !== 'number' || Number.isNaN(item.id)}
                   >
                     <Text style={styles.actionText}>Edit</Text>
                   </Pressable>
