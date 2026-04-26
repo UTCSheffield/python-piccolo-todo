@@ -45,6 +45,7 @@ function tplPackageJson(appName: string): string {
     dependencies: {
       react: '^18.2.0',
       'react-dom': '^18.2.0',
+      'react-router-dom': '^6.28.0',
     },
     devDependencies: {
       '@types/react': '^18.2.37',
@@ -134,12 +135,15 @@ function tplIndexHtml(appName: string): string {
 function tplMainTsx(): string {
   return `import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
   </React.StrictMode>,
 );
 `;
@@ -505,7 +509,7 @@ ${deleteButton}
   return `
   // ── ${label} ──────────────────────────────────────────────────────
   const [${R}, set${label}] = useState<Record<string,unknown>[]>([]);
-${res.canUpdate ? `  const [editing${TypeName}Id, setEditing${TypeName}Id] = useState<number | null>(null);` : ''}
+${res.canUpdate ? `  const [loadedEdit${TypeName}Id, setLoadedEdit${TypeName}Id] = useState<number | null>(null);` : ''}
 ${fkOptionStates}
 ${stateFields}
 ${editStateFields}
@@ -513,6 +517,18 @@ ${fkOptionLoaders}
 
   const load${label} = () =>
     getItems<Record<string,unknown>>('${R}').then(set${label}).catch(e => setError(e instanceof Error ? e.message : 'Load failed'));
+
+${res.canUpdate ? `  const loadEdit${TypeName} = async (id: number) => {
+    try {
+      const item = await getItem<Record<string,unknown>>('${R}', id);
+${res.fields.map(f => {
+  if (f.type === 'boolean') return `      setEdit${cap(f.name)}(Boolean(item.${f.name}));`;
+  return `      setEdit${cap(f.name)}(String(item.${f.name} ?? ''));`;
+}).join('\n')}
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Load failed');
+    }
+  };` : ''}
 
   useEffect(() => { if (session.authenticated) load${label}(); }, [session]);
 ${res.canCreate ? `
@@ -537,31 +553,29 @@ ${resetFields}
   };
 ` : ''}${res.canUpdate ? `
   const onStartEdit${TypeName} = (item: Record<string,unknown>) => {
-    setEditing${TypeName}Id(item.id as number);
-${res.fields.map(f => {
-  if (f.type === 'boolean') return `    setEdit${cap(f.name)}(Boolean(item.${f.name}));`;
-  return `    setEdit${cap(f.name)}(String(item.${f.name} ?? ''));`;
-}).join('\n')}
+    setLoadedEdit${TypeName}Id(null);
+    navigate('/${R}/edit/' + String(item.id));
   };
 
   const onCancelEdit${TypeName} = () => {
-    setEditing${TypeName}Id(null);
+    setLoadedEdit${TypeName}Id(null);
+    navigate('/${R}');
   };
 
-  const onSave${TypeName} = async (e: FormEvent<HTMLFormElement>) => {
+  const onSave${TypeName} = async (id: number, e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (editing${TypeName}Id === null) return;
     setError(null);
     try {
-      await updateItem('${R}', editing${TypeName}Id, {
+      await updateItem('${R}', id, {
 ${updatePayload}
       });
-      setEditing${TypeName}Id(null);
       await load${label}();
+      setLoadedEdit${TypeName}Id(id);
+      navigate('/${R}');
     } catch (err) { setError(err instanceof Error ? err.message : 'Update failed'); }
   };
 ` : ''}
-  const ${R}Section = session.authenticated && (
+  const ${label}ListRoute = () => session.authenticated && (
     <section style={section}>
       <h2 style={{ marginTop: 0 }}>${label}</h2>
 ${res.canCreate ? `
@@ -569,14 +583,6 @@ ${res.canCreate ? `
 ${formInputs}
         <button type="submit" style={btn}>Add ${TypeName}</button>
       </form>
-` : ''}
-${res.canUpdate ? `      {editing${TypeName}Id !== null && (
-        <form onSubmit={onSave${TypeName}} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, padding: 12, border: '1px solid #ffe58f', borderRadius: 6, background: '#fffbe6' }}>
-${editInputs}
-          <button type="submit" style={{ ...btn, backgroundColor: '#52c41a' }}>Save ${TypeName}</button>
-          <button type="button" onClick={onCancelEdit${TypeName}} style={{ ...btn, backgroundColor: '#8c8c8c' }}>Cancel</button>
-        </form>
-      )}
 ` : ''}
       {${R}.length === 0 ? (
         <p style={{ color: '#999' }}>No ${R} yet.</p>
@@ -600,6 +606,34 @@ ${editInputs}
       )}
     </section>
   );
+${res.canUpdate ? `
+  const ${TypeName}EditRoute = () => {
+    const params = useParams<{ id: string }>();
+    const editId = Number(params.id);
+
+    useEffect(() => {
+      if (session.authenticated && Number.isFinite(editId) && loadedEdit${TypeName}Id !== editId) {
+        void loadEdit${TypeName}(editId);
+        setLoadedEdit${TypeName}Id(editId);
+      }
+    }, [session, params.id, loadedEdit${TypeName}Id]);
+
+    if (!Number.isFinite(editId)) {
+      return <section style={section}><p style={{ color: '#a8071a' }}>Invalid id.</p></section>;
+    }
+
+    return (
+      <section style={section}>
+        <h2 style={{ marginTop: 0 }}>Edit ${TypeName}</h2>
+        <form onSubmit={(e) => onSave${TypeName}(editId, e)} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+${editInputs}
+          <button type="submit" style={{ ...btn, backgroundColor: '#52c41a' }}>Save ${TypeName}</button>
+          <button type="button" onClick={onCancelEdit${TypeName}} style={{ ...btn, backgroundColor: '#8c8c8c' }}>Cancel</button>
+        </form>
+      </section>
+    );
+  };
+` : ''}
 `;
 }
 
@@ -613,14 +647,20 @@ function tplAppTsx(title: string, resources: ResourceDef[]): string {
   const needsCreate = resources.some(r => r.canCreate);
   const needsUpdate = resources.some(r => r.canUpdate);
   const needsDelete = resources.some(r => r.canDelete);
+  const firstResource = resources[0]?.name;
   const crudImports = resources.length > 0
-    ? `import { checkSession, login, logout, SessionResponse, getItems${needsCreate ? ', createItem' : ''}${needsUpdate ? ', updateItem' : ''}${needsDelete ? ', deleteItem' : ''} } from './api/client';`
+    ? `import { checkSession, login, logout, SessionResponse, getItems${needsUpdate ? ', getItem' : ''}${needsCreate ? ', createItem' : ''}${needsUpdate ? ', updateItem' : ''}${needsDelete ? ', deleteItem' : ''} } from './api/client';`
     : `import { checkSession, login, logout, SessionResponse } from './api/client';`;
 
   const resourceSections = resources.map(renderResourceSection).join('\n');
-  const sectionRefs = resources.map(r => `      {${r.name}Section}`).join('\n');
+  const routeDefs = resources.map(r => {
+    const typeName = singular(r.label);
+    const editRoute = r.canUpdate ? `\n              <Route path="/${r.name}/edit/:id" element={<${typeName}EditRoute />} />` : '';
+    return `              <Route path="/${r.name}" element={<${r.label}ListRoute />} />${editRoute}`;
+  }).join('\n');
 
   return `import { FormEvent, useEffect, useState } from 'react';
+import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 ${crudImports}
 
 const section: React.CSSProperties = { border: '1px solid #d9d9d9', borderRadius: 8, padding: 16, marginBottom: 16 };
@@ -630,6 +670,7 @@ const th: React.CSSProperties = { padding: '8px 6px', fontWeight: 600, borderBot
 const td: React.CSSProperties = { padding: '6px', borderBottom: '1px solid #f9f9f9' };
 
 export const App = () => {
+  const navigate = useNavigate();
   const [session, setSession] = useState<SessionResponse>({ authenticated: false });
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -683,11 +724,25 @@ ${resourceSections}
         </section>
       )}
 
-${sectionRefs}
+      {session.authenticated && (
+        <Routes>
+          ${firstResource ? `<Route path="/" element={<Navigate to="/${firstResource}" replace />} />` : '<Route path="/" element={<section style={section}><p>No resources detected.</p></section>} />'}
+${routeDefs}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      )}
     </main>
   );
 };
 `;
+}
+
+function singular(label: string): string {
+  return label.endsWith('ies')
+    ? label.slice(0, -3) + 'y'
+    : label.endsWith('s')
+    ? label.slice(0, -1)
+    : label;
 }
 
 function tplEnv(): string {

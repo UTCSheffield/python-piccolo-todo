@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { checkSession, login, logout, SessionResponse, getItems, createItem, updateItem, deleteItem } from './api/client';
+import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
+import { checkSession, login, logout, SessionResponse, getItems, getItem, createItem, updateItem, deleteItem } from './api/client';
 
 const section: React.CSSProperties = { border: '1px solid #d9d9d9', borderRadius: 8, padding: 16, marginBottom: 16 };
 const btn: React.CSSProperties = { padding: '8px 16px', backgroundColor: '#1890ff', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 14 };
@@ -8,6 +9,7 @@ const th: React.CSSProperties = { padding: '8px 6px', fontWeight: 600, borderBot
 const td: React.CSSProperties = { padding: '6px', borderBottom: '1px solid #f9f9f9' };
 
 export const App = () => {
+  const navigate = useNavigate();
   const [session, setSession] = useState<SessionResponse>({ authenticated: false });
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -16,7 +18,7 @@ export const App = () => {
 
   // ── Todos ──────────────────────────────────────────────────────
   const [todos, setTodos] = useState<Record<string,unknown>[]>([]);
-  const [editingTodoId, setEditingTodoId] = useState<number | null>(null);
+  const [loadedEditTodoId, setLoadedEditTodoId] = useState<number | null>(null);
   const [categoriesOptions, setCategoriesOptions] = useState<{id:number;[k:string]:unknown}[]>([]);
   const [newTask, setNewTask] = useState('');
   const [newCategory, setNewCategory] = useState<string>('');
@@ -28,6 +30,17 @@ export const App = () => {
 
   const loadTodos = () =>
     getItems<Record<string,unknown>>('todos').then(setTodos).catch(e => setError(e instanceof Error ? e.message : 'Load failed'));
+
+  const loadEditTodo = async (id: number) => {
+    try {
+      const item = await getItem<Record<string,unknown>>('todos', id);
+      setEditTask(String(item.task ?? ''));
+      setEditCategory(String(item.category ?? ''));
+      setEditDone(Boolean(item.done));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Load failed');
+    }
+  };
 
   useEffect(() => { if (session.authenticated) loadTodos(); }, [session]);
 
@@ -56,32 +69,31 @@ export const App = () => {
   };
 
   const onStartEditTodo = (item: Record<string,unknown>) => {
-    setEditingTodoId(item.id as number);
-    setEditTask(String(item.task ?? ''));
-    setEditCategory(String(item.category ?? ''));
-    setEditDone(Boolean(item.done));
+    setLoadedEditTodoId(null);
+    navigate('/todos/edit/' + String(item.id));
   };
 
   const onCancelEditTodo = () => {
-    setEditingTodoId(null);
+    setLoadedEditTodoId(null);
+    navigate('/todos');
   };
 
-  const onSaveTodo = async (e: FormEvent<HTMLFormElement>) => {
+  const onSaveTodo = async (id: number, e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (editingTodoId === null) return;
     setError(null);
     try {
-      await updateItem('todos', editingTodoId, {
+      await updateItem('todos', id, {
       task: editTask,
       category: Number(editCategory),
       done: editDone,
       });
-      setEditingTodoId(null);
       await loadTodos();
+      setLoadedEditTodoId(id);
+      navigate('/todos');
     } catch (err) { setError(err instanceof Error ? err.message : 'Update failed'); }
   };
 
-  const todosSection = session.authenticated && (
+  const TodosListRoute = () => session.authenticated && (
     <section style={section}>
       <h2 style={{ marginTop: 0 }}>Todos</h2>
 
@@ -105,30 +117,6 @@ export const App = () => {
               </label>
         <button type="submit" style={btn}>Add Todo</button>
       </form>
-
-      {editingTodoId !== null && (
-        <form onSubmit={onSaveTodo} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, padding: 12, border: '1px solid #ffe58f', borderRadius: 6, background: '#fffbe6' }}>
-              <input
-                type="text"
-                placeholder="task"
-                value={editTask}
-                onChange={e => setEditTask(e.target.value)}
-                style={inp}
-              />
-              <select value={editCategory} onChange={e => setEditCategory(e.target.value)} style={inp}>
-                <option value="">-- category --</option>
-                {categoriesOptions.map(opt => (
-                  <option key={opt.id} value={String(opt.id)}>{String(opt.name ?? opt.title ?? opt.label ?? opt.id)}</option>
-                ))}
-              </select>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <input type="checkbox" checked={editDone} onChange={e => setEditDone(e.target.checked)} />
-                done
-              </label>
-          <button type="submit" style={{ ...btn, backgroundColor: '#52c41a' }}>Save Todo</button>
-          <button type="button" onClick={onCancelEditTodo} style={{ ...btn, backgroundColor: '#8c8c8c' }}>Cancel</button>
-        </form>
-      )}
 
       {todos.length === 0 ? (
         <p style={{ color: '#999' }}>No todos yet.</p>
@@ -161,6 +149,50 @@ export const App = () => {
       )}
     </section>
   );
+
+  const TodoEditRoute = () => {
+    const params = useParams<{ id: string }>();
+    const editId = Number(params.id);
+
+    useEffect(() => {
+      if (session.authenticated && Number.isFinite(editId) && loadedEditTodoId !== editId) {
+        void loadEditTodo(editId);
+        setLoadedEditTodoId(editId);
+      }
+    }, [session, params.id, loadedEditTodoId]);
+
+    if (!Number.isFinite(editId)) {
+      return <section style={section}><p style={{ color: '#a8071a' }}>Invalid id.</p></section>;
+    }
+
+    return (
+      <section style={section}>
+        <h2 style={{ marginTop: 0 }}>Edit Todo</h2>
+        <form onSubmit={(e) => onSaveTodo(editId, e)} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+              <input
+                type="text"
+                placeholder="task"
+                value={editTask}
+                onChange={e => setEditTask(e.target.value)}
+                style={inp}
+              />
+              <select value={editCategory} onChange={e => setEditCategory(e.target.value)} style={inp}>
+                <option value="">-- category --</option>
+                {categoriesOptions.map(opt => (
+                  <option key={opt.id} value={String(opt.id)}>{String(opt.name ?? opt.title ?? opt.label ?? opt.id)}</option>
+                ))}
+              </select>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input type="checkbox" checked={editDone} onChange={e => setEditDone(e.target.checked)} />
+                done
+              </label>
+          <button type="submit" style={{ ...btn, backgroundColor: '#52c41a' }}>Save Todo</button>
+          <button type="button" onClick={onCancelEditTodo} style={{ ...btn, backgroundColor: '#8c8c8c' }}>Cancel</button>
+        </form>
+      </section>
+    );
+  };
+
 
   useEffect(() => {
     checkSession()
@@ -209,7 +241,14 @@ export const App = () => {
         </section>
       )}
 
-      {todosSection}
+      {session.authenticated && (
+        <Routes>
+          <Route path="/" element={<Navigate to="/todos" replace />} />
+              <Route path="/todos" element={<TodosListRoute />} />
+              <Route path="/todos/edit/:id" element={<TodoEditRoute />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      )}
     </main>
   );
 };
