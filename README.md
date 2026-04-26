@@ -99,9 +99,9 @@ Use two terminals from the project root:
 
 If running in Codespaces, ensure ports 8000 (backend) and 8081 (Expo) are forwarded.
 
-## Run Refine Frontend (auth-antd)
+## Run Refine Frontend
 
-The repository also includes a Refine + Ant Design frontend in `auth-antd/`.
+The repository also includes a Refine + Ant Design frontend in `refine/`.
 
 1. Start backend API from the project root:
 
@@ -112,16 +112,16 @@ The repository also includes a Refine + Ant Design frontend in `auth-antd/`.
 2. In a second terminal, start Refine frontend:
 
    ```bash
-   cd auth-antd
+   cd refine
    npm install
    npm run dev
    ```
 
-3. Open the local URL shown by Vite (typically `http://localhost:5173`).
+3. Open the local URL shown by Vite (typically `http://localhost:5170`).
 
 Notes:
 
-1. In development, `auth-antd/vite.config.ts` proxies `/api` to `http://localhost:8000`.
+1. In development, `refine/vite.config.ts` proxies `/api` to `http://localhost:8000`.
 2. If backend runs on a different host, set `VITE_API_URL` for production builds.
 3. Category management is intentionally kept in `/admin`; user-facing frontends only consume category data.
 

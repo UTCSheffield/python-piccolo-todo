@@ -20,7 +20,7 @@ export const DashboardPage: React.FC = () => {
         <Card
           title="Identity"
           style={{ height: "300px", borderRadius: "15px" }}
-          headStyle={{ textAlign: "center" }}
+          styles={{ header: { textAlign: "center" } }}
         >
           <Space align="center" direction="horizontal">
             <Avatar size="large" src={identity?.avatar} />
@@ -32,7 +32,7 @@ export const DashboardPage: React.FC = () => {
         <Card
           title="Permissions"
           style={{ height: "300px", borderRadius: "15px" }}
-          headStyle={{ textAlign: "center" }}
+          styles={{ header: { textAlign: "center" } }}
         >
           <Text>{permissions.data}</Text>
         </Card>

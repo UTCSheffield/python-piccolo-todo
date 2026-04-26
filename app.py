@@ -127,8 +127,8 @@ async def root(request: Request):
         request,
         "home.html",
         {
-            "auth_antd_url": _frontend_url(request, 5173),
-            "openapi_lowcode_url": _frontend_url(request, 5174),
+            "refine_url": _frontend_url(request, 5100),
+            "openapi_lowcode_url": _frontend_url(request, 5200),
             "expo_url": _frontend_url(request, 8081),
         },
     )

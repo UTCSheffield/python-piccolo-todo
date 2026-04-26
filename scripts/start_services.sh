@@ -17,29 +17,29 @@ SLEEP_TIME=2
 # Service configuration
 declare -A SERVICES=(
   [backend]="python -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload"
-  [auth-antd]="npm run dev"
+  [refine]="npm run dev"
   [openapi-lowcode]="npm run dev"
   [expo]="npm run web -- --port 8081 --host localhost"
 )
 
 declare -A SERVICE_DIRS=(
   [backend]="$PROJECT_ROOT"
-  [auth-antd]="$PROJECT_ROOT/auth-antd"
+  [refine]="$PROJECT_ROOT/refine"
   [openapi-lowcode]="$PROJECT_ROOT/openapi-lowcode"
   [expo]="$PROJECT_ROOT/frontend"
 )
 
 declare -A SERVICE_NAMES=(
   [backend]="Backend API"
-  [auth-antd]="Auth + Antd Frontend"
+  [refine]="Refine Frontend"
   [openapi-lowcode]="OpenAPI Low-code Frontend"
   [expo]="Expo Frontend"
 )
 
 declare -A SERVICE_PORTS=(
   [backend]="8000"
-  [auth-antd]="5173"
-  [openapi-lowcode]="5174"
+  [refine]="5100"
+  [openapi-lowcode]="5200"
   [expo]="8081"
 )
 
@@ -175,8 +175,8 @@ make_ports_public() {
   for service in "${services_to_start[@]}"; do
     case "$service" in
       backend) ports+=("8000") ;;
-      auth-antd) ports+=("5173") ;;
-      openapi-lowcode) ports+=("5174") ;;
+      refine) ports+=("5100") ;;
+      openapi-lowcode) ports+=("5200") ;;
       expo) ports+=("8081") ;;
     esac
   done
@@ -221,8 +221,8 @@ Examples:
 
 Services:
   Backend API:              http://localhost:8000
-  Auth + Antd Frontend:     http://localhost:5173
-  OpenAPI Low-code:         http://localhost:5174
+  Refine Frontend:          http://localhost:5100
+  OpenAPI Low-code:         http://localhost:5200
   Expo Frontend:            http://localhost:8081
 
 Logs:
@@ -244,12 +244,12 @@ main() {
   fi
   echo ""
 
-  local services_to_start=("backend" "auth-antd" "openapi-lowcode" "expo")
+  local services_to_start=("backend" "refine" "openapi-lowcode" "expo")
 
   for arg in "$@"; do
     case "$arg" in
       --all)
-        services_to_start=("backend" "auth-antd" "openapi-lowcode" "expo")
+        services_to_start=("backend" "refine" "openapi-lowcode" "expo")
         ;;
       --backend-only)
         services_to_start=("backend")
@@ -283,8 +283,25 @@ main() {
   echo -e "${YELLOW}Cleaning up stale frontend processes...${NC}"
   cleanup_frontend_ports "${services_to_start[@]}"
 
+  echo -e "${YELLOW}Checking ports are free...${NC}"
+  local port_conflict=0
+  for service in "${services_to_start[@]}"; do
+    local port=${SERVICE_PORTS[$service]:-}
+    [[ -z "$port" ]] && continue
+    if lsof -ti :"$port" >/dev/null 2>&1; then
+      echo -e "${RED}✗ Port $port is still in use (needed by ${SERVICE_NAMES[$service]})${NC}"
+      port_conflict=1
+    else
+      echo -e "${GREEN}✓ Port $port is free${NC}"
+    fi
+  done
+  if [[ $port_conflict -ne 0 ]]; then
+    echo -e "${RED}Resolve port conflicts above before starting.${NC}"
+    exit 1
+  fi
+
   echo -e "${YELLOW}Checking npm dependencies...${NC}"
-  for service in "auth-antd" "openapi-lowcode" "expo"; do
+  for service in "refine" "openapi-lowcode" "expo"; do
     if [[ " ${services_to_start[@]} " =~ " ${service} " ]]; then
       local dir=${SERVICE_DIRS[$service]}
       if [[ ! -d "$dir/node_modules" ]]; then
@@ -341,20 +358,20 @@ main() {
           echo -e "  ReDoc: ${BLUE}http://localhost:8000/redoc${NC}"
         fi
         ;;
-      auth-antd)
+      refine)
         echo -e "${GREEN}✓${NC} ${name}"
         if [[ -n "${CODESPACE_NAME:-}" ]]; then
-          echo -e "  URL: ${BLUE}https://${CODESPACE_NAME}-5173.app.github.dev${NC}"
+          echo -e "  URL: ${BLUE}https://${CODESPACE_NAME}-5100.app.github.dev${NC}"
         else
-          echo -e "  URL: ${BLUE}http://localhost:5173${NC}"
+          echo -e "  URL: ${BLUE}http://localhost:5100${NC}"
         fi
         ;;
       openapi-lowcode)
         echo -e "${GREEN}✓${NC} ${name}"
         if [[ -n "${CODESPACE_NAME:-}" ]]; then
-          echo -e "  URL: ${BLUE}https://${CODESPACE_NAME}-5174.app.github.dev${NC}"
+          echo -e "  URL: ${BLUE}https://${CODESPACE_NAME}-5200.app.github.dev${NC}"
         else
-          echo -e "  URL: ${BLUE}http://localhost:5174${NC}"
+          echo -e "  URL: ${BLUE}http://localhost:5200${NC}"
         fi
         ;;
       expo)
