@@ -122,7 +122,7 @@ def _frontend_url(request: Request, port: int) -> str:
     return f"http://localhost:{port}"
 
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 async def root(request: Request):
     return templates.TemplateResponse(
         request,
