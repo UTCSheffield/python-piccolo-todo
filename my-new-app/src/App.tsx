@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
-import { checkSession, login, logout, SessionResponse, getItems, getItem, createItem, updateItem, deleteItem } from './api/client';
+import { checkSession, login, register, logout, SessionResponse, getItems, getItem, createItem, updateItem, deleteItem } from './api/client';
 
 const section: React.CSSProperties = { border: '1px solid #d9d9d9', borderRadius: 8, padding: 16, marginBottom: 16 };
 const btn: React.CSSProperties = { padding: '8px 16px', backgroundColor: '#1890ff', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 14 };
@@ -11,6 +11,7 @@ const td: React.CSSProperties = { padding: '6px', borderBottom: '1px solid #f9f9
 export const App = () => {
   const navigate = useNavigate();
   const [session, setSession] = useState<SessionResponse>({ authenticated: false });
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(true);
@@ -211,6 +212,17 @@ export const App = () => {
     } catch (err) { setError(err instanceof Error ? err.message : 'Login failed'); }
   };
 
+  const onRegister = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+    try {
+      await register(username, password);
+      await login(username, password);
+      setPassword('');
+      setSession(await checkSession());
+    } catch (err) { setError(err instanceof Error ? err.message : 'Register failed'); }
+  };
+
   const onLogout = async () => {
     setError(null);
     try { await logout(); setSession({ authenticated: false }); }
@@ -227,11 +239,20 @@ export const App = () => {
 
       {!session.authenticated ? (
         <section style={section}>
-          <h2>Login</h2>
-          <form onSubmit={onLogin} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <h2>{authMode === 'login' ? 'Login' : 'Register'}</h2>
+          <form onSubmit={authMode === 'login' ? onLogin : onRegister} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <label>Username<input type="text" value={username} onChange={e => setUsername(e.target.value)} autoComplete="username" style={{ ...inp, marginLeft: 8 }} /></label>
             <label>Password<input type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" style={{ ...inp, marginLeft: 8 }} /></label>
-            <div><button type="submit" style={btn}>Sign in</button></div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="submit" style={btn}>{authMode === 'login' ? 'Sign in' : 'Register'}</button>
+              <button
+                type="button"
+                style={{ ...btn, backgroundColor: '#8c8c8c' }}
+                onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}
+              >
+                {authMode === 'login' ? 'Need an account?' : 'Have an account?'}
+              </button>
+            </div>
           </form>
         </section>
       ) : (

@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
-import { checkSession, login, logout, getItems, getItem, createItem, updateItem, deleteItem } from './api/client';
+import { checkSession, login, register, logout, getItems, getItem, createItem, updateItem, deleteItem } from './api/client';
 const section = { border: '1px solid #d9d9d9', borderRadius: 8, padding: 16, marginBottom: 16 };
 const btn = { padding: '8px 16px', backgroundColor: '#1890ff', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 14 };
 const inp = { padding: '8px 10px', border: '1px solid #d9d9d9', borderRadius: 4, fontSize: 14 };
@@ -10,6 +10,7 @@ const td = { padding: '6px', borderBottom: '1px solid #f9f9f9' };
 export const App = () => {
     const navigate = useNavigate();
     const [session, setSession] = useState({ authenticated: false });
+    const [authMode, setAuthMode] = useState('login');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(true);
@@ -126,6 +127,19 @@ export const App = () => {
             setError(err instanceof Error ? err.message : 'Login failed');
         }
     };
+    const onRegister = async (e) => {
+        e.preventDefault();
+        setError(null);
+        try {
+            await register(username, password);
+            await login(username, password);
+            setPassword('');
+            setSession(await checkSession());
+        }
+        catch (err) {
+            setError(err instanceof Error ? err.message : 'Register failed');
+        }
+    };
     const onLogout = async () => {
         setError(null);
         try {
@@ -138,5 +152,5 @@ export const App = () => {
     };
     if (loading)
         return _jsx("main", { style: { padding: 24 }, children: "Loading\u2026" });
-    return (_jsxs("main", { style: { fontFamily: 'sans-serif', maxWidth: 960, margin: '24px auto', padding: 16 }, children: [_jsx("h1", { style: { marginTop: 0 }, children: "Piccolo Todo API" }), error && _jsx("div", { style: { ...section, borderColor: '#ff4d4f', color: '#a8071a', marginBottom: 16 }, children: error }), !session.authenticated ? (_jsxs("section", { style: section, children: [_jsx("h2", { children: "Login" }), _jsxs("form", { onSubmit: onLogin, style: { display: 'flex', flexDirection: 'column', gap: 10 }, children: [_jsxs("label", { children: ["Username", _jsx("input", { type: "text", value: username, onChange: e => setUsername(e.target.value), autoComplete: "username", style: { ...inp, marginLeft: 8 } })] }), _jsxs("label", { children: ["Password", _jsx("input", { type: "password", value: password, onChange: e => setPassword(e.target.value), autoComplete: "current-password", style: { ...inp, marginLeft: 8 } })] }), _jsx("div", { children: _jsx("button", { type: "submit", style: btn, children: "Sign in" }) })] })] })) : (_jsxs("section", { style: { ...section, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }, children: [_jsxs("p", { style: { margin: 0 }, children: ["Signed in as ", _jsx("strong", { children: session.user?.username ?? 'unknown' })] }), _jsx("button", { onClick: onLogout, style: btn, children: "Sign out" })] })), session.authenticated && (_jsxs(Routes, { children: [_jsx(Route, { path: "/", element: _jsx(Navigate, { to: "/todos", replace: true }) }), _jsx(Route, { path: "/todos", element: _jsx(TodosListRoute, {}) }), _jsx(Route, { path: "/todos/edit/:id", element: _jsx(TodoEditRoute, {}) }), _jsx(Route, { path: "*", element: _jsx(Navigate, { to: "/", replace: true }) })] }))] }));
+    return (_jsxs("main", { style: { fontFamily: 'sans-serif', maxWidth: 960, margin: '24px auto', padding: 16 }, children: [_jsx("h1", { style: { marginTop: 0 }, children: "Piccolo Todo API" }), error && _jsx("div", { style: { ...section, borderColor: '#ff4d4f', color: '#a8071a', marginBottom: 16 }, children: error }), !session.authenticated ? (_jsxs("section", { style: section, children: [_jsx("h2", { children: authMode === 'login' ? 'Login' : 'Register' }), _jsxs("form", { onSubmit: authMode === 'login' ? onLogin : onRegister, style: { display: 'flex', flexDirection: 'column', gap: 10 }, children: [_jsxs("label", { children: ["Username", _jsx("input", { type: "text", value: username, onChange: e => setUsername(e.target.value), autoComplete: "username", style: { ...inp, marginLeft: 8 } })] }), _jsxs("label", { children: ["Password", _jsx("input", { type: "password", value: password, onChange: e => setPassword(e.target.value), autoComplete: "current-password", style: { ...inp, marginLeft: 8 } })] }), _jsxs("div", { style: { display: 'flex', gap: 8 }, children: [_jsx("button", { type: "submit", style: btn, children: authMode === 'login' ? 'Sign in' : 'Register' }), _jsx("button", { type: "button", style: { ...btn, backgroundColor: '#8c8c8c' }, onClick: () => setAuthMode(authMode === 'login' ? 'register' : 'login'), children: authMode === 'login' ? 'Need an account?' : 'Have an account?' })] })] })] })) : (_jsxs("section", { style: { ...section, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }, children: [_jsxs("p", { style: { margin: 0 }, children: ["Signed in as ", _jsx("strong", { children: session.user?.username ?? 'unknown' })] }), _jsx("button", { onClick: onLogout, style: btn, children: "Sign out" })] })), session.authenticated && (_jsxs(Routes, { children: [_jsx(Route, { path: "/", element: _jsx(Navigate, { to: "/todos", replace: true }) }), _jsx(Route, { path: "/todos", element: _jsx(TodosListRoute, {}) }), _jsx(Route, { path: "/todos/edit/:id", element: _jsx(TodoEditRoute, {}) }), _jsx(Route, { path: "*", element: _jsx(Navigate, { to: "/", replace: true }) })] }))] }));
 };

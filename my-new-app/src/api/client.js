@@ -25,6 +25,10 @@ export const login = (username, password) => request('/api/session/login', {
     method: 'POST',
     body: JSON.stringify({ username, password }),
 });
+export const register = (username, password) => request('/api/session/register', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+});
 export const logout = () => request('/api/session/logout', { method: 'POST' });
 // ─── Generic CRUD helpers ─────────────────────────────────────────────────
 // These work with any REST resource. Replace with resource-specific

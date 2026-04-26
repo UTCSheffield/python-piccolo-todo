@@ -45,6 +45,12 @@ export const login = (username: string, password: string) =>
     body: JSON.stringify({ username, password }),
   });
 
+export const register = (username: string, password: string) =>
+  request<void>('/api/session/register', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  });
+
 export const logout = () =>
   request<void>('/api/session/logout', { method: 'POST' });
 
