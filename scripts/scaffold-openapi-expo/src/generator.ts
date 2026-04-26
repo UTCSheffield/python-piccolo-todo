@@ -554,12 +554,9 @@ function renderListScreen(resource: ResourceDef): string {
     })
     .join('\n');
 
-  const rowCells = ['id', ...resource.fields.map(f => f.name)]
-    .map(c => {
-      const field = resource.fields.find(f => f.name === c);
-      if (c === 'id') {
-        return `            <Text style={styles.itemText}>#{String(item.id ?? '')}</Text>`;
-      }
+  const rowCells = resource.fields
+    .map(field => {
+      const c = field.name;
       if (field?.type === 'boolean') {
         return `            <Text style={styles.itemText}>${c}: {item["${c}"] ? 'true' : 'false'}</Text>`;
       }

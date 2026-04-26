@@ -104,7 +104,6 @@ export default function TodosScreen() {
           <Text style={styles.subtitle}>Items</Text>
           {items.map((item, i) => (
             <View key={String(item.id ?? i)} style={styles.itemRow}>
-            <Text style={styles.itemText}>#{String(item.id ?? '')}</Text>
             <Text style={styles.itemText}>task: {String(item["task"] ?? '')}</Text>
             <Text style={styles.itemText}>category: {String(categoriesOptions.find(o => Number(o.id) === Number(item["category"]))?.name ?? item["category"] ?? '')}</Text>
             <Text style={styles.itemText}>done: {item["done"] ? 'true' : 'false'}</Text>
