@@ -13,7 +13,7 @@ export default function LoginScreen() {
     try {
       await login(username, password);
       const s = await checkSession();
-      if (s.authenticated) {
+      if (s?.authenticated) {
         router.replace('/(app)/todos');
       } else {
         setError('Login failed');

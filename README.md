@@ -6,7 +6,10 @@ This repository contains a minimal Piccolo ORM + FastAPI project with:
 2. Auto-generated JSON API endpoints using piccolo_api.
 3. Built-in Piccolo admin mounted with `piccolo_admin` (no custom admin templates needed).
 
-It also includes an Expo frontend in `frontend/`.
+It includes two Expo frontends:
+
+1. `frontend/` (main Expo frontend)
+2. `my-new-expo-app/` (OpenAPI scaffolded Expo frontend)
 
 ## Data Model
 
@@ -51,6 +54,8 @@ From the project root:
    ```bash
    cd frontend
    npm install
+   cd ../my-new-expo-app
+   npm install
    cd ..
    ```
 
@@ -69,20 +74,31 @@ From the project root:
    - Admin UI: http://127.0.0.1:8000/admin
    - API docs: http://127.0.0.1:8000/docs
 
-### Frontend (Expo)
+### Frontend (Expo - frontend)
 
-1. Start Expo:
+1. Start Expo on port 8081:
 
    ```bash
    cd frontend
-   npx expo start --web
+   npx expo start --web --port 8081 --host localhost
+   ```
+
+2. Press `w` to open in the browser, or scan the QR code with Expo Go.
+
+### Frontend (Expo - my-new-expo-app)
+
+1. Start Expo on port 8181:
+
+   ```bash
+   cd my-new-expo-app
+   npx expo start --web --port 8181 --host localhost
    ```
 
 2. Press `w` to open in the browser, or scan the QR code with Expo Go.
 
 ## Run Both Together
 
-Use two terminals from the project root:
+Use three terminals from the project root:
 
 1. Terminal 1 (backend):
 
@@ -94,10 +110,17 @@ Use two terminals from the project root:
 
    ```bash
    cd frontend
-   npx expo start
+   npx expo start --web --port 8081 --host localhost
    ```
 
-If running in Codespaces, ensure ports 8000 (backend) and 8081 (Expo) are forwarded.
+3. Terminal 3 (my-new-expo-app):
+
+   ```bash
+   cd my-new-expo-app
+   npx expo start --web --port 8181 --host localhost
+   ```
+
+If running in Codespaces, ensure ports 8000 (backend), 5300 (my-new-app), 8081 (frontend Expo), and 8181 (my-new-expo-app Expo) are forwarded.
 
 ## Run Refine Frontend
 
@@ -169,6 +192,8 @@ It generates a standalone React app from your live API schema, including:
 
 5. Open the Vite URL shown in the terminal (typically `http://localhost:5300`).
 
+This app is listed on the home page as `OpenAPI Frontend (my-new-app)`.
+
 ### Troubleshooting
 
 If you see an error like `ENOENT: process.cwd failed`, run commands from the repository root before deleting / regenerating `my-new-app`.
@@ -220,7 +245,7 @@ It generates an Expo Router app from your API schema, including:
    ```bash
    cd my-new-expo-app
    npm install
-   npm run web
+   npm run web -- --port 8181 --host localhost
    ```
 
    In Codespaces, you can use:
@@ -230,6 +255,7 @@ It generates an Expo Router app from your API schema, including:
    ```
 
    This auto-sets `EXPO_PUBLIC_API_URL` to your forwarded backend URL when not already set.
+   The Codespaces helper also runs Expo Web on port `8181` to avoid conflict with `frontend/`.
 
 Notes:
 

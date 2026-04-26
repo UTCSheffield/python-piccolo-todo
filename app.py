@@ -50,6 +50,8 @@ def _get_cors_origins() -> list[str]:
         "http://127.0.0.1:19006",
         "http://localhost:8081",
         "http://127.0.0.1:8081",
+        "http://localhost:8181",
+        "http://127.0.0.1:8181",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ]
@@ -130,7 +132,9 @@ async def root(request: Request):
         {
             "refine_url": _frontend_url(request, 5100),
             "openapi_lowcode_url": _frontend_url(request, 5200),
-            "expo_url": _frontend_url(request, 8081),
+            "openapi_scaffold_url": _frontend_url(request, 5300),
+            "expo_frontend_url": _frontend_url(request, 8081),
+            "expo_scaffold_url": _frontend_url(request, 8181),
         },
     )
 

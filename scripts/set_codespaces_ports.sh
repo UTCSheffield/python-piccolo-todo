@@ -11,7 +11,7 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 1
 fi
 
-# Make backend and Expo dev server reachable in Codespaces.
-gh codespace ports visibility 8000:public 8081:public -c "$CODESPACE_NAME"
+# Make backend and frontend dev servers reachable in Codespaces.
+gh codespace ports visibility 8000:public 5300:public 8081:public 8181:public -c "$CODESPACE_NAME"
 
-echo "Ports 8000 and 8081 are now public for codespace: $CODESPACE_NAME"
+echo "Ports 8000, 5300, 8081, and 8181 are now public for codespace: $CODESPACE_NAME"

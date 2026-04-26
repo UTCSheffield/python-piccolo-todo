@@ -14,7 +14,7 @@ export default function EditTodoScreen() {
 
   useEffect(() => {
     checkSession().then(s => {
-      if (!s.authenticated) {
+      if (!s?.authenticated) {
         router.replace('/(auth)/login');
         return;
       }

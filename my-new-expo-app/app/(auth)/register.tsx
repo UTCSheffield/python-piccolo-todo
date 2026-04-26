@@ -15,7 +15,7 @@ export default function RegisterScreen() {
       await register(username, password, email || undefined);
       await login(username, password);
       const s = await checkSession();
-      if (s.authenticated) {
+      if (s?.authenticated) {
         router.replace('/(app)/todos');
       } else {
         setError('Registration failed');

@@ -19,28 +19,36 @@ declare -A SERVICES=(
   [backend]="python -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload"
   [refine]="npm run dev"
   [openapi-lowcode]="npm run dev"
+  [openapi-scaffold]="npm run dev"
   [expo]="npm run web -- --port 8081 --host localhost"
+  [expo-scaffold]="bash ./scripts/start-web.sh"
 )
 
 declare -A SERVICE_DIRS=(
   [backend]="$PROJECT_ROOT"
   [refine]="$PROJECT_ROOT/refine"
   [openapi-lowcode]="$PROJECT_ROOT/openapi-lowcode"
+  [openapi-scaffold]="$PROJECT_ROOT/my-new-app"
   [expo]="$PROJECT_ROOT/frontend"
+  [expo-scaffold]="$PROJECT_ROOT/my-new-expo-app"
 )
 
 declare -A SERVICE_NAMES=(
   [backend]="Backend API"
   [refine]="Refine Frontend"
   [openapi-lowcode]="OpenAPI Low-code Frontend"
-  [expo]="Expo Frontend"
+  [openapi-scaffold]="OpenAPI Frontend (my-new-app)"
+  [expo]="Expo Frontend (frontend)"
+  [expo-scaffold]="Expo Frontend (my-new-expo-app)"
 )
 
 declare -A SERVICE_PORTS=(
   [backend]="8000"
   [refine]="5100"
   [openapi-lowcode]="5200"
+  [openapi-scaffold]="5300"
   [expo]="8081"
+  [expo-scaffold]="8181"
 )
 
 declare -A SERVICE_REUSED=()
@@ -177,7 +185,9 @@ make_ports_public() {
       backend) ports+=("8000") ;;
       refine) ports+=("5100") ;;
       openapi-lowcode) ports+=("5200") ;;
+      openapi-scaffold) ports+=("5300") ;;
       expo) ports+=("8081") ;;
+      expo-scaffold) ports+=("8181") ;;
     esac
   done
 
@@ -223,7 +233,9 @@ Services:
   Backend API:              http://localhost:8000
   Refine Frontend:          http://localhost:5100
   OpenAPI Low-code:         http://localhost:5200
-  Expo Frontend:            http://localhost:8081
+  OpenAPI Frontend (my-new-app): http://localhost:5300
+  Expo Frontend (frontend): http://localhost:8081
+  Expo Frontend (my-new-expo-app): http://localhost:8181
 
 Logs:
   Logs are saved to: .logs/
@@ -244,12 +256,12 @@ main() {
   fi
   echo ""
 
-  local services_to_start=("backend" "refine" "openapi-lowcode" "expo")
+  local services_to_start=("backend" "refine" "openapi-lowcode" "openapi-scaffold" "expo" "expo-scaffold")
 
   for arg in "$@"; do
     case "$arg" in
       --all)
-        services_to_start=("backend" "refine" "openapi-lowcode" "expo")
+        services_to_start=("backend" "refine" "openapi-lowcode" "openapi-scaffold" "expo" "expo-scaffold")
         ;;
       --backend-only)
         services_to_start=("backend")
@@ -258,11 +270,14 @@ main() {
         if [[ ! " ${services_to_start[*]} " =~ " expo " ]]; then
           services_to_start+=("expo")
         fi
+        if [[ ! " ${services_to_start[*]} " =~ " expo-scaffold " ]]; then
+          services_to_start+=("expo-scaffold")
+        fi
         ;;
       --no-expo)
         local filtered_services=()
         for s in "${services_to_start[@]}"; do
-          if [[ "$s" != "expo" ]]; then
+          if [[ "$s" != "expo" && "$s" != "expo-scaffold" ]]; then
             filtered_services+=("$s")
           fi
         done
@@ -301,7 +316,7 @@ main() {
   fi
 
   echo -e "${YELLOW}Checking npm dependencies...${NC}"
-  for service in "refine" "openapi-lowcode" "expo"; do
+  for service in "refine" "openapi-lowcode" "openapi-scaffold" "expo" "expo-scaffold"; do
     if [[ " ${services_to_start[@]} " =~ " ${service} " ]]; then
       local dir=${SERVICE_DIRS[$service]}
       if [[ ! -d "$dir/node_modules" ]]; then
@@ -374,12 +389,28 @@ main() {
           echo -e "  URL: ${BLUE}http://localhost:5200${NC}"
         fi
         ;;
+      openapi-scaffold)
+        echo -e "${GREEN}✓${NC} ${name}"
+        if [[ -n "${CODESPACE_NAME:-}" ]]; then
+          echo -e "  URL: ${BLUE}https://${CODESPACE_NAME}-5300.app.github.dev${NC}"
+        else
+          echo -e "  URL: ${BLUE}http://localhost:5300${NC}"
+        fi
+        ;;
       expo)
         echo -e "${GREEN}✓${NC} ${name}"
         if [[ -n "${CODESPACE_NAME:-}" ]]; then
           echo -e "  URL: ${BLUE}https://${CODESPACE_NAME}-8081.app.github.dev${NC}"
         else
           echo -e "  URL: ${BLUE}http://localhost:8081${NC}"
+        fi
+        ;;
+      expo-scaffold)
+        echo -e "${GREEN}✓${NC} ${name}"
+        if [[ -n "${CODESPACE_NAME:-}" ]]; then
+          echo -e "  URL: ${BLUE}https://${CODESPACE_NAME}-8181.app.github.dev${NC}"
+        else
+          echo -e "  URL: ${BLUE}http://localhost:8181${NC}"
         fi
         ;;
     esac

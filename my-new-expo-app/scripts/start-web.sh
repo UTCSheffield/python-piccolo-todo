@@ -8,4 +8,4 @@ if [[ -n "$CODESPACE_NAME" && -z "$EXPO_PUBLIC_API_URL" ]]; then
 fi
 
 echo "EXPO_PUBLIC_API_URL=${EXPO_PUBLIC_API_URL:-<not set>}"
-exec npx expo start --web
+exec npx expo start --web --port 8181 --host localhost

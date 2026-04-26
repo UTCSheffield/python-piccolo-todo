@@ -19,7 +19,7 @@ export default function TodosScreen() {
     checkSession()
       .then(async s => {
         setSession(s);
-        if (!s.authenticated) {
+        if (!s?.authenticated) {
           router.replace('/(auth)/login');
           return;
         }
