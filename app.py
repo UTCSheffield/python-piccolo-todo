@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from piccolo.apps.user.tables import BaseUser
 from piccolo_admin.endpoints import create_admin
 from piccolo_api.crud.endpoints import PiccoloCRUD
@@ -105,11 +106,32 @@ app.include_router(htmx_router)
 app.include_router(app_router)
 # Serve static files (e.g. htmx.min.js) at /static
 app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
+
+def _frontend_url(request: Request, port: int) -> str:
+    codespace_name = os.getenv("CODESPACE_NAME", "").strip()
+    if codespace_name:
+        return f"https://{codespace_name}-{port}.app.github.dev"
+
+    host = request.url.hostname or "localhost"
+    if host.endswith(".app.github.dev") and "-" in host:
+        host_prefix = host.rsplit("-", 1)[0]
+        return f"https://{host_prefix}-{port}.app.github.dev"
+    return f"http://localhost:{port}"
 
 
 @app.get("/")
-async def root():
-    return {"message": "Piccolo Todo API", "docs": "/docs", "admin": "/admin/"}
+async def root(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "home.html",
+        {
+            "auth_antd_url": _frontend_url(request, 5173),
+            "openapi_lowcode_url": _frontend_url(request, 5174),
+            "expo_url": _frontend_url(request, 8081),
+        },
+    )
 
 
 @app.get("/api/health")
